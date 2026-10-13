@@ -24,10 +24,14 @@
   3. Tools (on the Today tab): plate calculator, RPE <-> RIR converter,
      rest timer presets. The kg/lb button in the top bar switches
      units everywhere.
+  3b. Away from the gym: Today -> "Away from the gym?" -> Start travel
+     mode. The block pauses, Today shows bodyweight workouts, and
+     "Resume the gym program" restarts the rotation at the week you pick.
   4. Program tab: edit exercises, save a day as a template, load a
      template into a day.
   5. Progress tab: charts, PRs, a front/back muscle map and weekly
-     sets per muscle, push/pull balance, streak, history.
+     sets per muscle, push/pull balance, calories burned in training,
+     streak, history.
   6. Settings tab: block start/week, rest, units and increments,
      export/import JSON, reset program, clear logs.
 
@@ -156,6 +160,8 @@ details.tools[open]>summary::after{content:"−"}
 /* Active session */
 .sess-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
 .sess-clock{font-family:var(--font-display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.sess-kcal{display:block;margin-top:6px;font-size:1rem;color:var(--yellow)}
+.ex-kcal{color:var(--muted);font-size:.88rem;white-space:nowrap}
 .sess-clock small{display:block;font-family:var(--font-body);font-size:.75rem;font-weight:400;color:var(--muted)}
 .rest-row{display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap}
 .rest-row>span{font-size:.88rem;color:var(--muted)}
@@ -352,6 +358,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
     <label class="field"><span>Week 4 technique</span><input name="technique" maxlength="80"></label>
     <label class="check-field"><input type="checkbox" name="perSide"> Reps are per arm / per leg</label>
     <label class="check-field"><input type="checkbox" name="bodyweight"> Bodyweight exercise (weight = added load)</label>
+    <label class="check-field"><input type="checkbox" name="timed"> Timed (log seconds instead of reps, e.g. plank)</label>
     <label class="field"><span>Notes and cues</span><textarea name="notes" maxlength="400"></textarea></label>
     <p class="small" id="ex-error" style="color:var(--red)" role="alert"></p>
     <div class="dlg-actions">
@@ -389,7 +396,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
 /* ================= Constants ================= */
 var NS = 'ut_tracker_v1_';
 var K = { program: NS + 'program', sessions: NS + 'sessions', settings: NS + 'settings', templates: NS + 'templates', meta: NS + 'meta' };
-var SCHEMA = 2;
+var SCHEMA = 3;
 var MUSCLES = ['Chest','Back','Side delts','Rear delts','Front delts','Biceps','Triceps','Quads','Hamstrings','Glutes','Adductors','Calves','Abs'];
 var WEEK_NAMES = { 1: 'Calibration', 2: 'Build', 3: 'Build + volume', 4: 'Push', 5: 'Deload' };
 var GEN_RIR = { C: [3,2,2,1], A: [2,2,1,1] };
@@ -466,7 +473,35 @@ function ex(id, type, name, muscle, sets, repMin, repMax, rirStart, rirEnd, rest
     pattern: defaultPattern(muscle, name)
   }, extra || {});
 }
+/* Travel days: bodyweight program for weeks away from the gym (from the user's travel plan). */
+function defaultTravelDays() {
+  var bw = { bodyweight: true };
+  function t(extra) { return Object.assign({}, bw, extra || {}); }
+  return [
+    { id: 'travelUpper', name: 'Travel Upper', focus: 'Bodyweight, no equipment: bed, chair, door frame, towel', weekday: 'Any', region: 'upper', travel: true, exercises: [
+      ex('tu1','C','Push-up','Chest',3,8,30,1,1,90,'Body straight, chest almost to the floor, elbows at ~45°. Harder: feet on the bed or chair, 3 s lowering.', t()),
+      ex('tu2','C','Door-frame Row','Back',3,10,15,2,2,60,'Grip a solid part of the frame, door fully open and unable to move; never the door or the handle. Lean back, arm straight, pull towards the door. Harder: feet closer to the door.', t({ perSide: true })),
+      ex('tu3','C','Pike Push-up','Front delts',3,5,20,1,1,90,'Hips high in an upside-down V, head goes towards the floor between your hands. Harder: feet on the bed.', t()),
+      ex('tu4','A','Chair Dip','Triceps',2,8,25,2,2,75,'Stable chair against a wall, knees bent, lower to ~90°. Harder: legs straight. Skip it if your shoulders feel uncomfortable.', t()),
+      ex('tu5','A','Prone Y-T Raise','Rear delts',2,12,15,2,2,50,'Face down, straight arms into a Y, then a T, thumbs up, 2 s hold at the top. Harder: 3–5 s hold.', t()),
+      ex('tu6','A','Plank','Abs',2,30,60,2,2,50,'Body straight, breathe normally. Harder: lift one foot or one arm.', t({ timed: true }))
+    ]},
+    { id: 'travelLower', name: 'Travel Lower', focus: 'Bodyweight, no equipment: bed, chair, towel, step', weekday: 'Any', region: 'lower', travel: true, exercises: [
+      ex('tl1','C','Bulgarian Split Squat (back foot on bed)','Quads',3,10,20,1,1,60,'Slow 3 s lowering, back knee almost to the floor. Rest after both legs. Harder: 2 s pause at the bottom.', t({ perSide: true })),
+      ex('tl2','C','Single-leg RDL','Hamstrings',3,12,15,1,1,60,'Hips back, back straight, standing knee slightly bent. Harder: 4 s lowering.', t({ perSide: true })),
+      ex('tl3','A','Single-leg Glute Bridge','Glutes',3,12,20,1,1,50,'Push through the heel, 1 s squeeze at the top. Harder: shoulders on the bed.', t({ perSide: true })),
+      ex('tl4','A','Towel Leg Curl','Hamstrings',2,8,15,1,1,75,'On your back, heels on a towel on a smooth floor, hips up, slide the heels in. Harder: one leg at a time.', t()),
+      ex('tl5','A','Single-leg Calf Raise (step or book)','Calves',3,15,25,1,1,50,'Full stretch at the bottom, 2 s pause, half reps at the end. Harder: 3 s lowering.', t({ perSide: true })),
+      ex('tl6','A','Dead Bug','Abs',2,10,10,2,2,50,'Lower back pressed to the floor, exhale as you extend the opposite arm and leg. Harder: move slower.', t({ perSide: true }))
+    ]}
+  ];
+}
 function defaultProgram() {
+  var p = defaultGymProgram();
+  p.days = p.days.concat(defaultTravelDays());
+  return p;
+}
+function defaultGymProgram() {
   return { version: 1, days: [
     { id: 'upperA', name: 'Upper A', focus: 'Horizontal push/pull, chest emphasis', weekday: 'Mon', region: 'upper', exercises: [
       ex('ua1','C','Barbell Bench Press','Chest',3,6,8,3,1,165,'Alt: Smith bench or machine chest press. Bar to the lower chest, controlled.'),
@@ -509,7 +544,8 @@ function defaultProgram() {
 }
 function defaultSettings() {
   return { programStart: isoDate(), weekMode: 'auto', manualWeek: 1, restDefault: 90, useProgramRest: true,
-    incUpper: 2.5, incLower: 5, incUpperLb: 5, incLowerLb: 10, unit: 'kg', sound: true };
+    incUpper: 2.5, incLower: 5, incUpperLb: 5, incLowerLb: 10, unit: 'kg', sound: true, bodyWeight: 55,
+    travel: null, rotationResetAt: 0, reentrySince: 0 };
 }
 function normalizeEx(e) {
   var o = Object.assign({ type: 'A', name: 'Exercise', muscle: 'Chest', sets: 3, repMin: 8, repMax: 12, rirWeeks: [2,2,1,1], rest: 90,
@@ -569,6 +605,8 @@ window.addEventListener('pagehide', flush);
 function migrate(force) {
   var meta = load(K.meta, null) || { schema: 1 };
   if (!force && meta.schema >= SCHEMA) return false;
+  // schema 3: add the travel (bodyweight) days if they are missing
+  if (!program.days.some(function (d) { return d.travel; })) program.days = program.days.concat(defaultTravelDays());
   program.days.forEach(function (d) { d.exercises = d.exercises.map(normalizeEx); });
   sessions.forEach(function (s) {
     s.entries.forEach(function (en) {
@@ -585,10 +623,39 @@ function migrate(force) {
 }
 
 /* ================= Domain logic ================= */
-function currentWeek() {
+function weekAt(dateISO) {
   if (settings.weekMode === 'manual') return clamp(Number(settings.manualWeek) || 1, 1, 5);
-  var days = daysBetween(settings.programStart, isoDate());
+  var days = daysBetween(settings.programStart, dateISO);
   return clamp(Math.floor(days / 7) + 1, 1, 5);
+}
+function travelOn() { return !!(settings.travel && isoDate() >= settings.travel.from); }
+function travelScheduled() { return !!(settings.travel && isoDate() < settings.travel.from); }
+function currentWeek() {
+  if (travelOn()) return clamp(Number(settings.travel.pausedWeek) || 1, 1, 5); // block paused while away
+  return weekAt(isoDate());
+}
+function gymDays() { return program.days.filter(function (d) { return !d.travel; }); }
+function travelDaysList() { return program.days.filter(function (d) { return d.travel; }); }
+/* First gym session of each exercise after a break: last loads, +1 RIR */
+function needsReentry(exId) {
+  if (!settings.reentrySince) return false;
+  return !completedSessions().some(function (s) {
+    return !s.travel && s.startedAt >= settings.reentrySince && s.entries.some(function (en) { return en.exId === exId && en.sets.some(isWork); });
+  });
+}
+function startTravel(from, until) {
+  settings.travel = { from: from, until: until, pausedWeek: weekAt(from), createdAt: Date.now() };
+  saveSettings();
+}
+function resumeGym(week) {
+  var w = clamp(Number(week) || 1, 1, 5);
+  settings.programStart = addDaysISO(isoDate(), -(w - 1) * 7); // today becomes day 1 of week w
+  settings.weekMode = 'auto';
+  settings.travel = null;
+  settings.rotationResetAt = Date.now();  // rotation restarts from the first gym day (Upper A)
+  settings.reentrySince = Date.now();     // first session per exercise: last loads, +1 RIR
+  saveSettings();
+  return w;
 }
 function findDay(id) { return program.days.find(function (d) { return d.id === id; }) || null; }
 function findEx(exId) {
@@ -620,7 +687,7 @@ function target(e, week) {
   if (week >= 5) return { sets: Math.max(1, Math.ceil(e.sets / 2)), rir: 4, deload: true };
   return { sets: week >= 3 ? e.setsW34 : e.sets, rir: e.rirWeeks[week - 1], deload: false };
 }
-function rangeTxt(min, max, perSide) { return min + '–' + max + (perSide ? '/side' : ''); }
+function rangeTxt(min, max, perSide, timed) { return min + '–' + max + (timed ? ' s' : '') + (perSide ? '/side' : ''); }
 function patternOf(en) {
   if (['push','pull','none'].indexOf(en.pattern) > -1) return en.pattern;
   var f = findEx(en.exId); return f ? f.ex.pattern : defaultPattern(en.muscle, en.name);
@@ -640,13 +707,26 @@ function incD(p, region) {
    p = { id, repMin, repMax, perSide, bodyweight, increment, rir (today's target), deload }
    Returns { kind: new|up|hold|down|deload, weight (kg or null), reps, why }            */
 function progression(p, region, excludeId) {
-  var range = rangeTxt(p.repMin, p.repMax, p.perSide), step = roundStepD();
+  var range = rangeTxt(p.repMin, p.repMax, p.perSide, p.timed), step = roundStepD();
   var L = lastEntries(p.id, 2, excludeId);
-  if (!L.length) return { kind: 'new', weight: null, reps: null, why: 'First time: find a load for ' + range + ' reps at RIR ' + p.rir + '.' };
+  if (!L.length) {
+    if (p.timed) return { kind: 'new', weight: null, reps: null, why: 'First time: hold as long as you can with good form, aiming for ' + range + '.' };
+    if (p.bodyweight) return { kind: 'new', weight: null, reps: null, why: 'First time: do one set to your true max to learn your limit, then stop 1–2 reps short (' + range + ').' };
+    return { kind: 'new', weight: null, reps: null, why: 'First time: find a load for ' + range + ' reps at RIR ' + p.rir + '.' };
+  }
   var prev = L[0].entry, work = prev.sets.filter(isWork);
   var top = topW(prev), topD = toD(top);
   var repsList = work.map(function (s) { return s.r; }).join(', ');
   var minR = minOf(work.map(function (s) { return s.r; }));
+  if (p.reentry && !p.deload) {
+    return { kind: 'reentry', weight: top, reps: Math.min(prev.repMax, Math.max(p.repMin, minR)),
+      why: 'First session back: same load as last time (' + repsList + '), one more rep in reserve (RIR ' + p.rir + '). Normal progression resumes next time.' };
+  }
+  if (p.timed && !p.deload) {
+    var secs = repsList + ' s';
+    if (work.every(function (x) { return x.r >= prev.repMax; })) return { kind: 'up', weight: top, reps: p.repMax, why: 'Top of range held (' + secs + '). Use the harder version (see notes).' };
+    return { kind: 'hold', weight: top, reps: Math.min(prev.repMax, minR + 5), why: 'Hold a little longer than last time (' + secs + ').' };
+  }
   if (p.deload) {
     return { kind: 'deload', weight: top > 0 ? fromD(roundTo(topD * 0.9, step)) : 0, reps: p.repMin,
       why: 'Deload week: about 10% lighter, half the sets, RIR 4.' };
@@ -676,17 +756,19 @@ function progression(p, region, excludeId) {
   return { kind: 'hold', weight: top, reps: Math.min(prev.repMax, minR + 1), why: 'In the range (' + repsList + '). Keep the load and add a rep to your weakest set.' };
 }
 function nextTargetTxt(g, p) {
-  if (g.kind === 'new') return 'Next target: pick a load × ' + rangeTxt(p.repMin, p.repMax, p.perSide);
-  return 'Next target: ' + wl(g.weight, p.bodyweight) + ' × ' + g.reps + (p.perSide ? '/side' : '');
+  if (g.kind === 'new') return 'Next target: ' + (p.bodyweight ? 'max reps, stop 1–2 short' : 'pick a load') + ' × ' + rangeTxt(p.repMin, p.repMax, p.perSide, p.timed);
+  var load = (p.bodyweight && !g.weight) ? 'bodyweight' : wl(g.weight, p.bodyweight);
+  return 'Next target: ' + load + ' × ' + g.reps + (p.timed ? ' s' : '') + (p.perSide ? '/side' : '');
 }
-function planFromEx(e, week) {
-  var t = target(e, week);
-  return { id: e.id, repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight, increment: e.increment, rir: t.rir, deload: t.deload };
+function planFromEx(e, week, day) {
+  var t = target(e, week), re = !(day && day.travel) && !t.deload && needsReentry(e.id) && !!lastEntry(e.id);
+  return { id: e.id, repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight, timed: !!e.timed, increment: e.increment,
+    rir: re ? Math.min(4, t.rir + 1) : t.rir, deload: t.deload, reentry: re };
 }
 function planFromEntry(en, s) {
   var f = findEx(en.exId);
-  return { id: en.exId, repMin: en.repMin, repMax: en.repMax, perSide: en.perSide, bodyweight: en.bodyweight,
-    increment: f ? f.ex.increment : null, rir: en.targetRir, deload: s.week >= 5 };
+  return { id: en.exId, repMin: en.repMin, repMax: en.repMax, perSide: en.perSide, bodyweight: en.bodyweight, timed: !!en.timed,
+    increment: f ? f.ex.increment : null, rir: en.targetRir, deload: s.week >= 5 && !s.travel, reentry: !!en.reentry };
 }
 
 /* ---------- PRs ---------- */
@@ -748,7 +830,7 @@ function deloadFlag(exId, excludeId) {
 }
 function stallingLifts() {
   var out = [];
-  program.days.forEach(function (d) { d.exercises.forEach(function (e) { var f = deloadFlag(e.id); if (f) out.push(e.name); }); });
+  gymDays().forEach(function (d) { d.exercises.forEach(function (e) { var f = deloadFlag(e.id); if (f) out.push(e.name); }); });
   return out;
 }
 
@@ -871,18 +953,50 @@ function hydratePhotos(root) {
   });
 }
 
+/* ================= Calories burned (estimate) =================
+   ACSM equation: kcal/min = MET x 3.5 x body weight (kg) / 200.
+   MET values (Compendium of Physical Activities): heavy lower-body compounds 6.0,
+   upper-body compounds 5.0, isolation 3.5, applied to work time + rest time.
+   Time per exercise is estimated from the logged sets; once a session is finished
+   the estimate is rescaled to its real duration (if that duration is plausible). */
+var KCAL = { workSec: 40, warmSec: 30, warmRest: 60, supersetGapSec: 15 };
+function metFor(en) { if (en.travel) return 3.8; if (en.type === 'C') return en.region === 'lower' ? 6.0 : 5.0; return 3.5; }
+function bodyKg(s) { return (s && s.bodyWeight) || Number(settings.bodyWeight) || 70; }
+function exMinutes(s, en, idx) {
+  var work = en.sets.filter(isWork).length, warm = en.sets.filter(function (x) { return x.warm && x.r > 0; }).length;
+  var rest = en.rest || Number(settings.restDefault) || 90;
+  var nx = s.entries[idx + 1];
+  if (/a$/i.test(en.superset || '') && nx && /b$/i.test(nx.superset || '')) rest = KCAL.supersetGapSec; // rest comes after the b exercise
+  return (work * (KCAL.workSec + rest) + warm * (KCAL.warmSec + KCAL.warmRest)) / 60;
+}
+function sessionEnergy(s) {
+  var kg = bodyKg(s);
+  var rows = s.entries.map(function (en, i) {
+    var min = exMinutes(s, en, i);
+    return { exId: en.exId, name: en.name, min: min, kcal: metFor(en) * 3.5 * kg / 200 * min };
+  });
+  var estMin = rows.reduce(function (a, r) { return a + r.min; }, 0);
+  var actual = s.completedAt ? (s.completedAt - s.startedAt) / 60000 : null, scale = 1;
+  if (actual && estMin > 0) { var ratio = actual / estMin; if (ratio >= 0.5 && ratio <= 2) scale = ratio; }
+  rows.forEach(function (r) { r.min *= scale; r.kcal *= scale; });
+  var total = rows.reduce(function (a, r) { return a + r.kcal; }, 0);
+  return { rows: rows, total: total, minutes: estMin * scale, actual: actual, scaled: scale !== 1, kg: kg };
+}
+function kcalTxt(v) { return '≈ ' + Math.round(v) + ' kcal'; }
+
 /* ================= Session actions ================= */
 function startSession(day) {
   if (!day || !day.exercises.length) return;
   var week = currentWeek();
-  var s = { id: uid(), dayId: day.id, dayName: day.name, date: isoDate(), week: week, startedAt: Date.now(), completedAt: null, notes: '',
+  var trav = !!day.travel;
+  var s = { id: uid(), dayId: day.id, dayName: day.name, date: isoDate(), week: week, startedAt: Date.now(), completedAt: null, notes: '', bodyWeight: Number(settings.bodyWeight) || null, travel: trav,
     entries: day.exercises.map(function (e) {
-      var t = target(e, week), g = progression(planFromEx(e, week), day.region);
-      return { exId: e.id, name: e.name, type: e.type, muscle: e.muscle, pattern: e.pattern, region: day.region,
+      var t = trav ? target(e, 1) : target(e, week), pl = planFromEx(e, trav ? 1 : week, day), g = progression(pl, day.region);
+      return { exId: e.id, name: e.name, type: e.type, muscle: e.muscle, pattern: e.pattern, region: day.region, travel: trav, timed: !!e.timed, reentry: pl.reentry,
         repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight,
-        targetRir: t.rir, targetSets: t.sets, rest: e.rest, superset: e.superset || '',
-        technique: week === 4 ? (e.technique || '') : '', exNotes: e.notes || '', note: '', photo: false,
-        sets: Array.from({ length: t.sets }, function () { return { w: g.weight, r: null, rir: null, warm: false, done: false }; }) };
+        targetRir: pl.rir, targetSets: t.sets, rest: e.rest, superset: e.superset || '',
+        technique: (week === 4 && !trav) ? (e.technique || '') : '', exNotes: e.notes || '', note: '', photo: false,
+        sets: Array.from({ length: t.sets }, function () { return { w: (e.bodyweight && !g.weight) ? null : g.weight, r: null, rir: null, warm: false, done: false }; }) };
     }) };
   sessions.push(s); saveSessions();
   ui.justCompleted = null; ui.platesOpen = {}; ui.photoBig = {};
@@ -927,7 +1041,7 @@ var view = $('#view');
 function render() {
   document.querySelectorAll('.tabbar [role=tab]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === ui.tab)); });
   var w = currentWeek();
-  $('#weekpill').innerHTML = 'Wk <b>' + w + '</b> ' + esc(WEEK_NAMES[w]);
+  $('#weekpill').innerHTML = travelOn() ? 'Travel, wk <b>' + w + '</b> paused' : 'Wk <b>' + w + '</b> ' + esc(WEEK_NAMES[w]);
   var ub = $('#unit-btn');
   ub.textContent = U();
   ub.setAttribute('aria-label', 'Units: ' + U() + '. Tap to switch to ' + (U() === 'kg' ? 'lb' : 'kg'));
@@ -965,9 +1079,46 @@ function restChips() {
 
 /* ---------- Today ---------- */
 function renderToday() { var s = activeSession(); return s ? renderActive(s) : renderIdle(); }
+function travelBanner() {
+  if (travelScheduled()) {
+    var tr0 = settings.travel;
+    return '<div class="callout"><strong>Travel mode from ' + fmtDate(tr0.from) + ' to ' + fmtDate(tr0.until) + '.</strong> Until then, train in the gym as usual. On ' + fmtDate(tr0.from) +
+      ' the app switches to the bodyweight workouts and pauses your block at week ' + tr0.pausedWeek + '.' +
+      '<div style="margin-top:8px"><button type="button" class="btn small" data-act="travel-cancel">Cancel travel mode</button></div></div>';
+  }
+  if (!travelOn()) {
+    if (!settings.reentrySince || !gymDays().some(function (d) { return d.exercises.some(function (e) { return needsReentry(e.id) && lastEntry(e.id); }); })) return '';
+    return '<p class="callout">Back from a break: the first session of each day uses your last loads with one more rep in reserve. Normal progression resumes after that.</p>';
+  }
+  var tr = settings.travel, over = isoDate() > tr.until;
+  return '<div class="callout"><strong>' + (over ? 'Your trip ended on ' + fmtDate(tr.until) + '.' : 'Travel mode until ' + fmtDate(tr.until) + '.') + '</strong> ' +
+    'Your gym block is paused at week ' + tr.pausedWeek + ' (' + esc(WEEK_NAMES[tr.pausedWeek]) + '), nothing is lost. ' +
+    'Do 3–4 bodyweight workouts, alternating Upper and Lower, taking each set to RIR 1–2. They count for your streak, muscle map and calories, but don\'t change your gym progression.' +
+    ' First time: one set of each exercise to your true max (RIR 0), to learn your limit.</div>';
+}
+function awayCard() {
+  if (travelOn()) {
+    var tr = settings.travel, opts = '';
+    for (var i = 1; i <= 5; i++) opts += '<option value="' + i + '"' + (i === Number(tr.pausedWeek) ? ' selected' : '') + '>Week ' + i + ' (' + WEEK_NAMES[i] + ')</option>';
+    return '<section class="card" aria-labelledby="back-h"><h3 id="back-h">Back in the gym?</h3>' +
+      '<p class="muted small" style="margin-top:6px">Restarts the rotation from ' + esc((gymDays()[0] || { name: 'the first day' }).name) + ' at the week you choose, starting today. The first session of each day uses your last loads with +1 RIR.</p>' +
+      '<label class="field"><span>Resume at</span><select id="resume-week">' + opts + '</select></label>' +
+      '<button type="button" class="btn primary block" data-act="travel-resume">Resume the gym program</button></section>';
+  }
+  if (travelScheduled()) return '';
+  var today = isoDate();
+  return '<details class="tools" id="away"' + (ui.awayOpen ? ' open' : '') + '><summary>Away from the gym?</summary><div class="tools-body">' +
+    '<p class="muted small">Travel mode pauses your block (week ' + weekAt(today) + ' stays week ' + weekAt(today) + '), switches Today to bodyweight workouts, and brings you back to ' +
+    esc((gymDays()[0] || { name: 'the first day' }).name) + ' when you return. Logged progress is never touched.</p>' +
+    '<div class="grid2"><label class="field"><span>From</span><input type="date" id="travel-from" value="' + today + '"></label>' +
+    '<label class="field"><span>Until</span><input type="date" id="travel-until" value="' + addDaysISO(today, 6) + '"></label></div>' +
+    '<button type="button" class="btn block" data-act="travel-start">Start travel mode</button></div></details>';
+}
 function renderIdle() {
-  var next = program.days.length ? nextDayId() : null;
-  if (!ui.selectedDay || !findDay(ui.selectedDay)) ui.selectedDay = next;
+  var away = travelOn();
+  var list = away ? travelDaysList() : gymDays();
+  var next = list.length ? (away ? nextTravelDayId() : nextDayId()) : null;
+  if (!ui.selectedDay || !list.some(function (d) { return d.id === ui.selectedDay; })) ui.selectedDay = next;
   var day = findDay(ui.selectedDay), week = currentWeek(), h = '';
   var done = ui.justCompleted ? sessions.find(function (x) { return x.id === ui.justCompleted; }) : null;
   var hasHistory = sessions.some(function (x) { return x.completedAt; });
@@ -978,7 +1129,7 @@ function renderIdle() {
       en.sets.forEach(function (st) { if (isWork(st)) { sets++; vol += (st.w || 0) * st.r; if (isPR(st, b)) hit = true; } });
       if (hit) prs++;
     });
-    h += '<p class="callout good"><strong>' + esc(done.dayName) + ' saved</strong> in ' + clock(done.completedAt - done.startedAt) + '. ' + sets + ' working sets, ' +
+    h += '<p class="callout good"><strong>' + esc(done.dayName) + ' saved</strong> in ' + clock(done.completedAt - done.startedAt) + ', ' + kcalTxt(sessionEnergy(done).total) + ' burned. ' + sets + ' working sets, ' +
       Math.round(toD(vol)).toLocaleString() + ' ' + U() + ' total volume' + (prs ? ', PRs on ' + prs + ' exercise' + (prs > 1 ? 's' : '') : '') + '.</p>';
   }
   if (hasHistory) {
@@ -986,8 +1137,8 @@ function renderIdle() {
     h += '<div class="stats" aria-label="Adherence">' +
       '<div class="stat"><b>' + a.streak + '</b><span>sessions in a row</span></div>' +
       '<div class="stat"><b>' + a.month + '</b><span>this month</span></div>' +
-      '<div class="stat"><b>' + a.week + '/' + program.days.length + '</b><span>this week</span></div></div>';
-    var stall = week < 5 ? stallingLifts() : [];
+      '<div class="stat"><b>' + a.week + '/' + gymDays().length + '</b><span>this week</span></div></div>';
+    var stall = (week < 5 && !away) ? stallingLifts() : [];
     if (stall.length) {
       h += '<div class="callout warn"><strong>Consider a deload week.</strong> Stalling: ' + esc(stall.slice(0, 4).join(', ')) + (stall.length > 4 ? ' and ' + (stall.length - 4) + ' more' : '') + '.' +
         '<div style="margin-top:8px"><button type="button" class="btn small" data-act="start-deload">Switch to deload week</button></div></div>';
@@ -995,8 +1146,9 @@ function renderIdle() {
   } else {
     h += '<div class="empty"><h3>No sessions logged yet</h3><p class="muted">Pick a day and press Start. Week 1 is for finding your loads and practising RIR, so leave a few reps in the tank.</p></div>';
   }
-  h += '<h2>Pick a day</h2><div class="day-grid" role="group" aria-label="Training days">';
-  program.days.forEach(function (d) {
+  h += travelBanner();
+  h += '<h2>' + (away ? 'Pick a travel workout' : 'Pick a day') + '</h2><div class="day-grid" role="group" aria-label="Training days">';
+  list.forEach(function (d) {
     h += '<button type="button" class="day-btn" data-act="pick-day" data-day="' + esc(d.id) + '" aria-pressed="' + (day && d.id === day.id) + '">' +
       '<span class="dname">' + esc(d.name) + '</span><span class="dmeta">' + esc(d.weekday) + ', ' + d.exercises.length + ' exercises</span>' +
       (d.id === next ? '<span class="next">Next up</span>' : '') + '</button>';
@@ -1009,14 +1161,15 @@ function renderIdle() {
     } else {
       h += '<ol class="preview">';
       day.exercises.forEach(function (e) {
-        var t = target(e, week), p = planFromEx(e, week), g = progression(p, day.region);
+        var wk = day.travel ? 1 : week, t = target(e, wk), p = planFromEx(e, wk, day), g = progression(p, day.region);
         h += '<li><strong>' + esc(e.name) + '</strong>' + (e.superset ? ' <span class="ss">Superset ' + esc(e.superset) + '</span>' : '') +
-          '<div class="small muted num">' + t.sets + ' × ' + rangeTxt(e.repMin, e.repMax, e.perSide) + ' at RIR ' + t.rir + '</div>' +
+          '<div class="small muted num">' + t.sets + ' × ' + rangeTxt(e.repMin, e.repMax, e.perSide, e.timed) + ' at RIR ' + p.rir + '</div>' +
           '<div class="small num" style="' + (g.kind === 'up' ? 'color:var(--yellow)' : g.kind === 'down' ? 'color:var(--red)' : '') + '">' + esc(nextTargetTxt(g, p)) + '</div></li>';
       });
       h += '</ol><button type="button" class="btn primary block" data-act="start" data-day="' + esc(day.id) + '">Start ' + esc(day.name) + '</button></section>';
     }
   }
+  h += awayCard();
   if (templates.length) {
     h += '<section class="card" aria-labelledby="tpl-h"><h3 id="tpl-h">Templates</h3><ul class="tpl-list">' + templates.map(function (t) {
       return '<li><span><strong>' + esc(t.name) + '</strong><br><span class="muted small">' + t.exercises.length + ' exercises</span></span>' +
@@ -1029,7 +1182,8 @@ function renderIdle() {
 function renderActive(s) {
   var h = '<section aria-labelledby="sess-h"><div class="sess-head"><div><h2 id="sess-h">' + esc(s.dayName) + '</h2>' +
     '<p class="muted small">Week ' + s.week + ' (' + esc(WEEK_NAMES[s.week]) + ')</p></div>' +
-    '<div class="sess-clock" aria-label="Session duration"><span id="elapsed">' + clock(Date.now() - s.startedAt) + '</span><small>session time</small></div></div>' +
+    '<div class="sess-clock" aria-label="Session duration and calories"><span id="elapsed">' + clock(Date.now() - s.startedAt) + '</span><small>session time</small>' +
+    '<span class="sess-kcal" id="sess-kcal">' + kcalTxt(sessionEnergy(s).total) + '</span></div></div>' +
     '<div class="rest-row"><span>Rest</span>' + restChips() + '</div>';
   if (s.week === 4) h += '<p class="callout">Week 4: one intensity technique per session, on the last set of the marked exercise.</p>';
   if (s.week >= 5) h += '<p class="callout">Deload week: half the sets, about 10% lighter, RIR 4. No techniques.</p>';
@@ -1055,7 +1209,7 @@ function renderEntry(s, en, i) {
     return '<div class="set-row' + (st.warm ? ' warm' : '') + (st.done ? ' done' : '') + (isPR(st, b) ? ' is-pr' : '') + '" data-si="' + si + '">' +
       '<button type="button" class="set-type" data-act="toggle-warm" aria-label="' + nm + '. Tap to switch between warm-up and working">' + label + '</button>' +
       '<input type="text" inputmode="decimal" autocomplete="off" data-f="w" value="' + fmtW(st.w) + '" placeholder="' + (pv && pv.w != null ? fmtW(pv.w) : U()) + '" aria-label="' + nm + ' weight in ' + U() + '">' +
-      '<input type="text" inputmode="numeric" autocomplete="off" data-f="r" value="' + (st.r == null ? '' : st.r) + '" placeholder="' + (pv && pv.r != null ? pv.r : 'reps') + '" aria-label="' + nm + ' reps">' +
+      '<input type="text" inputmode="numeric" autocomplete="off" data-f="r" value="' + (st.r == null ? '' : st.r) + '" placeholder="' + (pv && pv.r != null ? pv.r : 'reps') + '" aria-label="' + nm + (en.timed ? ' seconds' : ' reps') + '">' +
       '<input type="text" inputmode="numeric" autocomplete="off" data-f="rir" value="' + (st.rir == null ? '' : st.rir) + '" placeholder="' + (st.warm ? '–' : en.targetRir) + '" aria-label="' + nm + ' reps in reserve">' +
       '<button type="button" class="check" data-act="done" aria-pressed="' + !!st.done + '" aria-label="' + (st.done ? 'Undo ' : 'Mark ') + nm + ' done">✓</button>' +
       '<button type="button" class="del" data-act="del-set" aria-label="Delete ' + nm + '">×</button></div>';
@@ -1069,7 +1223,8 @@ function renderEntry(s, en, i) {
   return '<article class="ex" data-ei="' + i + '" aria-labelledby="ex-h-' + i + '">' +
     '<div class="ex-title"><span class="tag" title="' + (en.type === 'C' ? 'Compound' : 'Accessory') + '">' + esc(en.type) + '</span>' +
     '<h3 id="ex-h-' + i + '">' + esc(en.name) + '</h3>' + (en.superset ? '<span class="ss">Superset ' + esc(en.superset) + '</span>' : '') + '</div>' +
-    '<p class="target">' + en.targetSets + ' × ' + rangeTxt(en.repMin, en.repMax, en.perSide) + ' at RIR ' + en.targetRir + ', rest ' + fmtRest(en.rest || settings.restDefault) + '</p>' +
+    '<p class="target">' + en.targetSets + ' × ' + rangeTxt(en.repMin, en.repMax, en.perSide, en.timed) + ' at RIR ' + en.targetRir + (en.reentry ? ' (+1, back from a break)' : '') + ', rest ' + fmtRest(en.rest || settings.restDefault) +
+      ' <span class="ex-kcal" data-kcal>' + kcalTxt(sessionEnergy(s).rows[i].kcal) + '</span></p>' +
     '<p class="next-target ' + ntCls + '">' + esc(nextTargetTxt(g, p)) + '</p>' +
     '<p class="hint">' + esc(g.why) + '</p>' +
     '<p class="e1" data-e1>' + e1Html(e1Trend(en.exId, en, s.id)) + '</p>' +
@@ -1077,7 +1232,7 @@ function renderEntry(s, en, i) {
     (flag ? '<p class="warn-line">Consider a deload week: ' + esc(flag) + '.</p>' : '') +
     (en.technique ? '<p class="technique">Week 4: ' + esc(en.technique) + '</p>' : '') +
     (en.exNotes ? '<p class="ex-notes">' + esc(en.exNotes) + '</p>' : '') +
-    '<div class="sets"><div class="set-head" aria-hidden="true"><span>Set</span><span>' + U() + '</span><span>Reps</span><span>RIR</span><span>Done</span><span></span></div>' + rows + '</div>' +
+    '<div class="sets"><div class="set-head" aria-hidden="true"><span>Set</span><span>' + U() + '</span><span>' + (en.timed ? 'Sec' : 'Reps') + '</span><span>RIR</span><span>Done</span><span></span></div>' + rows + '</div>' +
     '<div class="ex-actions"><button type="button" class="btn small" data-act="ramp"' + (en.bodyweight && !ww ? ' disabled' : '') + '>Ramp-up</button>' +
     '<button type="button" class="btn small" data-act="add-warm">+ Warm-up</button>' +
     '<button type="button" class="btn small" data-act="add-set">+ Set</button>' +
@@ -1087,12 +1242,21 @@ function renderEntry(s, en, i) {
     '<label class="field" style="margin:0"><span>Note for this exercise</span><input type="text" data-f="exnote" value="' + esc(en.note) + '" placeholder="Seat 4, felt knee, etc."></label>' +
     '</article>';
 }
+function updateKcal(s) {
+  var en = sessionEnergy(s), tot = document.getElementById('sess-kcal');
+  if (tot) tot.textContent = kcalTxt(en.total);
+  view.querySelectorAll('.ex[data-ei]').forEach(function (art) {
+    var k = art.querySelector('[data-kcal]'), r = en.rows[Number(art.dataset.ei)];
+    if (k && r) k.textContent = kcalTxt(r.kcal);
+  });
+}
 function refreshEntry(i, si, act) {
   var s = activeSession(); if (!s) return render();
   var art = view.querySelector('.ex[data-ei="' + i + '"]'); if (!art) return render();
   art.outerHTML = renderEntry(s, s.entries[i], i);
   var fresh = view.querySelector('.ex[data-ei="' + i + '"]');
   hydratePhotos(fresh);
+  updateKcal(s);
   if (act != null && fresh) {
     var el = fresh.querySelector('.set-row[data-si="' + si + '"] [data-act="' + act + '"]') || fresh.querySelector('[data-act="' + act + '"]');
     if (el && !el.disabled) el.focus({ preventScroll: true });
@@ -1103,7 +1267,9 @@ function refreshEntry(i, si, act) {
 /* ---------- Program ---------- */
 function renderProgram() {
   var h = '<h2>Program</h2><p class="muted">Changes apply to new sessions. Sessions you already logged keep what you did.</p>';
+  var travelHeadDone = false;
   program.days.forEach(function (d) {
+    if (d.travel && !travelHeadDone) { travelHeadDone = true; h += '<h2 style="margin-top:24px">Travel days</h2><p class="muted">Bodyweight workouts used in travel mode. Edit them like any other day.</p>'; }
     h += '<section class="card" aria-labelledby="pd-' + esc(d.id) + '"><div class="day-head"><div><h3 id="pd-' + esc(d.id) + '">' + esc(d.name) + '</h3>' +
       '<p class="muted small">' + esc(d.weekday) + ': ' + esc(d.focus) + '</p></div>' +
       '<div class="chips"><button type="button" class="btn small ghost" data-act="edit-day" data-day="' + esc(d.id) + '">Edit day</button>' +
@@ -1114,7 +1280,7 @@ function renderProgram() {
       var setsTxt = e.sets === e.setsW34 ? e.sets : e.sets + ' (wk 3–4: ' + e.setsW34 + ')';
       h += '<li><div class="prog-main"><span class="tag">' + esc(e.type) + '</span> <strong>' + esc(e.name) + '</strong>' +
         (e.superset ? ' <span class="ss">' + esc(e.superset) + '</span>' : '') +
-        '<div class="muted small num">' + setsTxt + ' × ' + rangeTxt(e.repMin, e.repMax, e.perSide) + ', RIR ' + e.rirWeeks.join('/') + ', rest ' + fmtRest(e.rest) + ', ' + esc(e.muscle) + (e.pattern !== 'none' ? ', ' + e.pattern : '') + '</div></div>' +
+        '<div class="muted small num">' + setsTxt + ' × ' + rangeTxt(e.repMin, e.repMax, e.perSide, e.timed) + ', RIR ' + e.rirWeeks.join('/') + ', rest ' + fmtRest(e.rest) + ', ' + esc(e.muscle) + (e.pattern !== 'none' ? ', ' + e.pattern : '') + '</div></div>' +
         '<div class="prog-btns">' +
         '<button type="button" class="icon" data-act="move" data-dir="-1" data-day="' + esc(d.id) + '" data-i="' + i + '" aria-label="Move ' + esc(e.name) + ' up"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
         '<button type="button" class="icon" data-act="move" data-dir="1" data-day="' + esc(d.id) + '" data-i="' + i + '" aria-label="Move ' + esc(e.name) + ' down"' + (i === d.exercises.length - 1 ? ' disabled' : '') + '>↓</button>' +
@@ -1225,6 +1391,18 @@ function renderProgress() {
   ui.chart.bars = rows;
   var total = rows.reduce(function (acc, r) { return acc + r.v; }, 0);
   var hMap = muscleMapCard(counts, total);
+  var weekSess = comp.filter(function (s) { return weekStartISO(s.date) === ui.volWeek; });
+  var hKcal = '<section class="card" aria-labelledby="kcal-h"><h3 id="kcal-h">Calories burned in training</h3>' +
+    '<p class="muted small">Week of ' + fmtDate(ui.volWeek) + '. Estimate from your sets, rest times and body weight.</p>';
+  if (weekSess.length) {
+    var wk = 0;
+    hKcal += '<table><thead><tr><th scope="col">Day</th><th scope="col">Duration</th><th scope="col">Calories</th></tr></thead><tbody>' +
+      weekSess.map(function (s) { var e = sessionEnergy(s); wk += e.total;
+        return '<tr><td>' + esc(s.dayName) + ' <span class="muted">' + fmtDate(s.date) + '</span></td><td>' + Math.round(e.minutes) + ' min' + (e.actual && !e.scaled ? '*' : '') + '</td><td>' + kcalTxt(e.total) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<p style="margin:10px 0 0"><strong>Week total: ' + kcalTxt(wk) + '</strong> in ' + weekSess.length + ' session' + (weekSess.length > 1 ? 's' : '') + '.</p>';
+  } else hKcal += '<p class="muted">No finished sessions in this week.</p>';
+  hKcal += '<p class="muted small" style="margin:8px 0 0">* Real session time looked wrong (too short, or left open), so the time was estimated from your sets. Expect an error of ±20–30%, as with fitness watches. Uses ' + wl(Number(settings.bodyWeight) || 70) + ' body weight (change it in Settings).</p></section>';
   var h3 = '<section class="card" aria-labelledby="vol-h"><h3 id="vol-h">Weekly volume</h3>' +
     '<p class="muted small">Week of ' + fmtDate(ui.volWeek) + '. Working sets per muscle group, direct work only. Dashed lines mark 10 and 20 sets.</p>';
   if (total) {
@@ -1249,7 +1427,7 @@ function renderProgress() {
   comp.slice().reverse().forEach(function (s) {
     var n = s.entries.reduce(function (acc, en) { return acc + en.sets.filter(isWork).length; }, 0);
     var pics = s.entries.filter(function (en) { return en.photo; });
-    h4 += '<details class="hist"><summary><span><strong>' + esc(s.dayName) + '</strong> <span class="muted">' + fmtDate(s.date) + ', week ' + s.week + '</span></span><span class="muted small">' + n + ' sets' + (pics.length ? ', ' + pics.length + ' photo' + (pics.length > 1 ? 's' : '') : '') + '</span></summary><ul>' +
+    h4 += '<details class="hist"><summary><span><strong>' + esc(s.dayName) + '</strong>' + (s.travel ? ' <span class="ss">travel</span>' : '') + ' <span class="muted">' + fmtDate(s.date) + ', week ' + s.week + '</span></span><span class="muted small">' + n + ' sets, ' + kcalTxt(sessionEnergy(s).total) + (pics.length ? ', ' + pics.length + ' photo' + (pics.length > 1 ? 's' : '') : '') + '</span></summary><ul>' +
       s.entries.filter(function (en) { return en.sets.length; }).map(function (en) {
         return '<li>' + esc(en.name) + ': ' + en.sets.map(function (x) {
           return (x.warm ? 'W ' : '') + fmtW(x.w) + '×' + (x.r == null ? '–' : x.r) + (x.rir != null ? ' @' + x.rir : '');
@@ -1260,7 +1438,7 @@ function renderProgress() {
       '<button type="button" class="btn small danger" data-act="del-session" data-id="' + esc(s.id) + '">Delete this session</button></details>';
   });
   h4 += '</section>';
-  return h + h2 + hMap + h3 + h4;
+  return h + h2 + hMap + h3 + hKcal + h4;
 }
 
 /* ---------- Muscle map (inline SVG) ----------
@@ -1353,6 +1531,7 @@ function muscleMapCard(counts, total) {
 /* ---------- Settings ---------- */
 function renderSettings() {
   var w = currentWeek();
+  var travelNote = travelOn() ? '<p class="callout">Travel mode is on: the block is paused at week ' + w + '. Resume from the Today tab.</p>' : '';
   var weekOpts = '<option value="auto"' + (settings.weekMode === 'auto' ? ' selected' : '') + '>Automatic from start date</option>';
   for (var i = 1; i <= 5; i++) weekOpts += '<option value="' + i + '"' + (settings.weekMode === 'manual' && Number(settings.manualWeek) === i ? ' selected' : '') + '>Week ' + i + ' (' + WEEK_NAMES[i] + ')</option>';
   var restOpts = REST_PRESETS.slice();
@@ -1361,7 +1540,7 @@ function renderSettings() {
   var nSess = sessions.filter(function (s) { return s.completedAt; }).length;
   var lb = U() === 'lb';
   return '<h2>Settings</h2>' +
-    '<section class="card" aria-labelledby="st-block"><h3 id="st-block">Program block</h3><p class="muted small">Today counts as week ' + w + ' (' + WEEK_NAMES[w] + '). After the deload in week 5, set a new start date to begin the next block.</p>' +
+    travelNote + '<section class="card" aria-labelledby="st-block"><h3 id="st-block">Program block</h3><p class="muted small">Today counts as week ' + w + ' (' + WEEK_NAMES[w] + '). After the deload in week 5, set a new start date to begin the next block.</p>' +
     '<label class="field"><span>Start date of week 1</span><input type="date" data-setting="programStart" value="' + esc(settings.programStart) + '"></label>' +
     '<label class="field"><span>Current week</span><select data-setting="week">' + weekOpts + '</select></label></section>' +
     '<section class="card" aria-labelledby="st-units"><h3 id="st-units">Units and progression</h3>' +
@@ -1369,6 +1548,9 @@ function renderSettings() {
     '<p class="muted small">Load added when every working set hits the top of the rep range (see the progression notes at the top of the file).</p>' +
     '<div class="grid2"><label class="field"><span>Upper days (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="' + (lb ? 'incUpperLb' : 'incUpper') + '" value="' + (lb ? settings.incUpperLb : settings.incUpper) + '"></label>' +
     '<label class="field"><span>Lower days (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="' + (lb ? 'incLowerLb' : 'incLower') + '" value="' + (lb ? settings.incLowerLb : settings.incLower) + '"></label></div></section>' +
+    '<section class="card" aria-labelledby="st-kcal"><h3 id="st-kcal">Calories burned</h3>' +
+    '<label class="field"><span>Body weight (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="bodyWeight" value="' + fmtW(Number(settings.bodyWeight) || null) + '"></label>' +
+    '<p class="muted small" style="margin:0">Used to estimate calories burned in each workout. Update it when your weight changes; finished workouts keep the weight they were logged with.</p></section>' +
     '<section class="card" aria-labelledby="st-rest"><h3 id="st-rest">Rest timer</h3>' +
     '<label class="field"><span>Default rest</span><select data-setting="restDefault">' + restOpts.map(function (s) { return '<option value="' + s + '"' + (s === Number(settings.restDefault) ? ' selected' : '') + '>' + fmtRest(s) + '</option>'; }).join('') + '</select></label>' +
     '<label class="check-field"><input type="checkbox" data-setting="useProgramRest"' + (settings.useProgramRest ? ' checked' : '') + '> Use each exercise\'s rest from the program</label>' +
@@ -1680,6 +1862,23 @@ view.addEventListener('click', function (e) {
         (mc >= MM_TARGET ? ', target reached.' : mc ? ', ' + (MM_TARGET - mc) + ' below target.' : '.');
       break;
     }
+    case 'travel-start': {
+      var f = ($('#travel-from') || {}).value, u = ($('#travel-until') || {}).value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f || '') || !/^\d{4}-\d{2}-\d{2}$/.test(u || '')) { toast('Pick both dates'); return; }
+      if (u < f) { toast('The end date is before the start date'); return; }
+      if (s) { toast('Finish or discard the open workout first'); return; }
+      startTravel(f, u); ui.selectedDay = null; ui.awayOpen = false; render(); window.scrollTo(0, 0);
+      toast(travelOn() ? 'Travel mode on. Week ' + settings.travel.pausedWeek + ' is paused.' : 'Travel mode set from ' + fmtDate(f));
+      break;
+    }
+    case 'travel-cancel': settings.travel = null; saveSettings(); render(); toast('Travel mode cancelled'); break;
+    case 'travel-resume': {
+      if (s) { toast('Finish or discard the open workout first'); return; }
+      var rw = resumeGym(($('#resume-week') || {}).value);
+      ui.selectedDay = null; render(); window.scrollTo(0, 0);
+      toast('Welcome back: week ' + rw + ', ' + ((gymDays()[0] || {}).name || '') + ' next.');
+      break;
+    }
     case 'vol-prev': ui.volWeek = addDaysISO(ui.volWeek, -7); render(); break;
     case 'vol-next': ui.volWeek = addDaysISO(ui.volWeek, 7); render(); break;
     case 'del-session':
@@ -1711,6 +1910,7 @@ view.addEventListener('keydown', function (e) {
 view.addEventListener('toggle', function (e) {
   var d = e.target;
   if (d.id === 'tools') { ui.toolsOpen = d.open; return; }
+  if (d.id === 'away') { ui.awayOpen = d.open; return; }
   if (d.classList && d.classList.contains('hist') && d.open) {
     d.querySelectorAll('img[data-photo-lazy]').forEach(function (img) { img.setAttribute('data-photo', img.dataset.photoLazy); img.removeAttribute('data-photo-lazy'); });
     hydratePhotos(d);
@@ -1752,6 +1952,7 @@ view.addEventListener('input', function (e) {
   st[f] = v2;
   row.classList.toggle('is-pr', isPR(st, bests(en.exId, s.id)));
   var e1 = art.querySelector('[data-e1]'); if (e1) e1.innerHTML = e1Html(e1Trend(en.exId, en, s.id));
+  updateKcal(s);
   saveSessionsSoon();
 });
 
@@ -1768,7 +1969,7 @@ view.addEventListener('change', function (e) {
   } else {
     var v = num(t.value);
     if (v == null || v <= 0) { toast('Enter a number above zero'); render(); return; }
-    settings[k] = k === 'restDefault' ? Math.round(clamp(v, 10, 900)) : v;
+    settings[k] = k === 'restDefault' ? Math.round(clamp(v, 10, 900)) : k === 'bodyWeight' ? Math.round(fromD(clamp(v, 1, 500)) * 100) / 100 : v;
   }
   saveSettings(); render(); toast('Settings saved');
   focusSel('[data-setting="' + k + '"]');
@@ -1817,7 +2018,7 @@ function openExDialog(dayId, exId) {
   EF('increment').value = base.increment == null ? '' : base.increment;
   EF('superset').value = base.superset || '';
   EF('technique').value = base.technique || '';
-  EF('perSide').checked = !!base.perSide; EF('bodyweight').checked = !!base.bodyweight;
+  EF('perSide').checked = !!base.perSide; EF('bodyweight').checked = !!base.bodyweight; EF('timed').checked = !!base.timed;
   EF('notes').value = base.notes || '';
   $('#ex-error').textContent = '';
   $('#ex-delete').hidden = !e;
@@ -1838,7 +2039,7 @@ exForm.addEventListener('submit', function (ev) {
   var day = findDay(editing.dayId);
   var data = { name: name, type: EF('type').value, muscle: EF('muscle').value, pattern: EF('pattern').value, sets: sets, setsW34: setsW34 == null ? sets : setsW34,
     repMin: repMin, repMax: repMax, rirWeeks: rir, rest: rest, increment: inc, superset: EF('superset').value.trim(),
-    technique: EF('technique').value.trim(), perSide: EF('perSide').checked, bodyweight: EF('bodyweight').checked, notes: EF('notes').value.trim() };
+    technique: EF('technique').value.trim(), perSide: EF('perSide').checked, bodyweight: EF('bodyweight').checked, timed: EF('timed').checked, notes: EF('notes').value.trim() };
   if (editing.exId) Object.assign(day.exercises.find(function (x) { return x.id === editing.exId; }), data);
   else day.exercises.push(normalizeEx(Object.assign({ id: uid() }, data)));
   saveProgram(); closeDlg(exDlg); render(); toast(editing.exId ? 'Exercise saved' : 'Exercise added');
@@ -1903,12 +2104,15 @@ $('#import-file').addEventListener('change', function (ev) {
 });
 
 /* ================= Boot ================= */
-function nextDayId() {
-  var comp = completedSessions();
-  if (!comp.length) return program.days[0].id;
-  var idx = program.days.findIndex(function (d) { return d.id === comp[comp.length - 1].dayId; });
-  return program.days[(idx + 1) % program.days.length].id;
+function nextInRotation(days, travel, since) {
+  if (!days.length) return null;
+  var comp = completedSessions().filter(function (s) { return !!s.travel === travel && s.startedAt >= (since || 0) && days.some(function (d) { return d.id === s.dayId; }); });
+  if (!comp.length) return days[0].id;
+  var idx = days.findIndex(function (d) { return d.id === comp[comp.length - 1].dayId; });
+  return days[(idx + 1) % days.length].id;
 }
+function nextDayId() { return nextInRotation(gymDays(), false, settings.rotationResetAt); }
+function nextTravelDayId() { return nextInRotation(travelDaysList(), true, settings.travel ? parseISO(settings.travel.from).getTime() : 0); }
 var migrated = migrate(false);
 if (!storedSettings) saveSettings();
 render();
