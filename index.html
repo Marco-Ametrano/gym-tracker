@@ -358,6 +358,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
     <label class="field"><span>Week 4 technique</span><input name="technique" maxlength="80"></label>
     <label class="check-field"><input type="checkbox" name="perSide"> Reps are per arm / per leg</label>
     <label class="check-field"><input type="checkbox" name="bodyweight"> Bodyweight exercise (weight = added load)</label>
+    <label class="check-field"><input type="checkbox" name="band"> Resistance band (log the band in the note, not as weight)</label>
     <label class="check-field"><input type="checkbox" name="timed"> Timed (log seconds instead of reps, e.g. plank)</label>
     <label class="field"><span>Notes and cues</span><textarea name="notes" maxlength="400"></textarea></label>
     <p class="small" id="ex-error" style="color:var(--red)" role="alert"></p>
@@ -396,7 +397,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
 /* ================= Constants ================= */
 var NS = 'ut_tracker_v1_';
 var K = { program: NS + 'program', sessions: NS + 'sessions', settings: NS + 'settings', templates: NS + 'templates', meta: NS + 'meta' };
-var SCHEMA = 3;
+var SCHEMA = 4;
 var MUSCLES = ['Chest','Back','Side delts','Rear delts','Front delts','Biceps','Triceps','Quads','Hamstrings','Glutes','Adductors','Calves','Abs'];
 var WEEK_NAMES = { 1: 'Calibration', 2: 'Build', 3: 'Build + volume', 4: 'Push', 5: 'Deload' };
 var GEN_RIR = { C: [3,2,2,1], A: [2,2,1,1] };
@@ -475,24 +476,28 @@ function ex(id, type, name, muscle, sets, repMin, repMax, rirStart, rirEnd, rest
 }
 /* Travel days: bodyweight program for weeks away from the gym (from the user's travel plan). */
 function defaultTravelDays() {
-  var bw = { bodyweight: true };
-  function t(extra) { return Object.assign({}, bw, extra || {}); }
+  // Travel program: bodyweight + resistance bands (hotel room). Exercise ids shared with the
+  // earlier bodyweight-only version (push-up, pike, split squat, glute bridge, calf raise, dead bug) keep their history.
+  function bw(extra) { return Object.assign({ bodyweight: true }, extra || {}); }
+  function band(extra) { return Object.assign({ bodyweight: true, band: true }, extra || {}); }
   return [
-    { id: 'travelUpper', name: 'Travel Upper', focus: 'Bodyweight, no equipment: bed, chair, door frame, towel', weekday: 'Any', region: 'upper', travel: true, exercises: [
-      ex('tu1','C','Push-up','Chest',3,8,30,1,1,90,'Body straight, chest almost to the floor, elbows at ~45°. Harder: feet on the bed or chair, 3 s lowering.', t()),
-      ex('tu2','C','Door-frame Row','Back',3,10,15,2,2,60,'Grip a solid part of the frame, door fully open and unable to move; never the door or the handle. Lean back, arm straight, pull towards the door. Harder: feet closer to the door.', t({ perSide: true })),
-      ex('tu3','C','Pike Push-up','Front delts',3,5,20,1,1,90,'Hips high in an upside-down V, head goes towards the floor between your hands. Harder: feet on the bed.', t()),
-      ex('tu4','A','Chair Dip','Triceps',2,8,25,2,2,75,'Stable chair against a wall, knees bent, lower to ~90°. Harder: legs straight. Skip it if your shoulders feel uncomfortable.', t()),
-      ex('tu5','A','Prone Y-T Raise','Rear delts',2,12,15,2,2,50,'Face down, straight arms into a Y, then a T, thumbs up, 2 s hold at the top. Harder: 3–5 s hold.', t()),
-      ex('tu6','A','Plank','Abs',2,30,60,2,2,50,'Body straight, breathe normally. Harder: lift one foot or one arm.', t({ timed: true }))
+    { id: 'travelUpper', name: 'Travel Upper', focus: 'Bands + bodyweight, ~30–35 min. Door anchor, bed, chair', weekday: 'Any', region: 'upper', travel: true, exercises: [
+      ex('tu1','C','Push-up','Chest',3,8,30,1,1,90,'Body straight, chest almost to the floor, elbows at ~45°. Too easy: feet on the bed, or a band across your back held under your hands.', bw()),
+      ex('tu7','C','Band Row','Back',3,12,20,1,1,75,'Seated, legs straight, band around your feet (or anchored in the door at chest height). Elbows back, squeeze the shoulder blades, return slowly to a full stretch.', band()),
+      ex('tu8','C','Band Lat Pulldown','Back',3,12,20,1,1,75,'Band anchored high in the door. Kneel facing the door, arms up, pull the elbows down to your ribs.', band()),
+      ex('tu3','C','Pike Push-up','Front delts',2,5,20,1,1,90,'Hips high in an upside-down V, head goes towards the floor between your hands. Too easy: feet on the bed.', bw()),
+      ex('tu9','A','Band Lateral Raise','Side delts',3,15,20,1,1,60,'Stand on the band, one end in each hand (or one arm at a time for more tension). Lead with the elbows to shoulder height.', band()),
+      ex('tu10','A','Band Face Pull or Pull-apart','Rear delts',2,15,20,2,2,50,'Face pull: band anchored at face height, pull towards your forehead, elbows high. Pull-apart: arms straight in front, pull the band apart to your chest.', band()),
+      ex('tu11','A','Band Curl','Biceps',3,12,20,1,1,60,'Stand on the band, elbows pinned to your sides. Step back so the band is taut at the bottom. Go straight to 7b.', band({ superset: '7a' })),
+      ex('tu12','A','Band Overhead Triceps Extension','Triceps',3,12,20,1,1,60,'Stand on one end (or anchor it low behind you), band behind your head, elbows forward, extend up. Rest 60 s after both.', band({ superset: '7b' }))
     ]},
-    { id: 'travelLower', name: 'Travel Lower', focus: 'Bodyweight, no equipment: bed, chair, towel, step', weekday: 'Any', region: 'lower', travel: true, exercises: [
-      ex('tl1','C','Bulgarian Split Squat (back foot on bed)','Quads',3,10,20,1,1,60,'Slow 3 s lowering, back knee almost to the floor. Rest after both legs. Harder: 2 s pause at the bottom.', t({ perSide: true })),
-      ex('tl2','C','Single-leg RDL','Hamstrings',3,12,15,1,1,60,'Hips back, back straight, standing knee slightly bent. Harder: 4 s lowering.', t({ perSide: true })),
-      ex('tl3','A','Single-leg Glute Bridge','Glutes',3,12,20,1,1,50,'Push through the heel, 1 s squeeze at the top. Harder: shoulders on the bed.', t({ perSide: true })),
-      ex('tl4','A','Towel Leg Curl','Hamstrings',2,8,15,1,1,75,'On your back, heels on a towel on a smooth floor, hips up, slide the heels in. Harder: one leg at a time.', t()),
-      ex('tl5','A','Single-leg Calf Raise (step or book)','Calves',3,15,25,1,1,50,'Full stretch at the bottom, 2 s pause, half reps at the end. Harder: 3 s lowering.', t({ perSide: true })),
-      ex('tl6','A','Dead Bug','Abs',2,10,10,2,2,50,'Lower back pressed to the floor, exhale as you extend the opposite arm and leg. Harder: move slower.', t({ perSide: true }))
+    { id: 'travelLower', name: 'Travel Lower', focus: 'Bands + bodyweight, ~30–35 min. Door anchor, bed or chair, step', weekday: 'Any', region: 'lower', travel: true, exercises: [
+      ex('tl1','C','Bulgarian Split Squat (back foot on bed)','Quads',3,10,20,1,1,60,'Slow 3 s lowering, back knee almost to the floor. Stable chair against a wall. Too easy: band under the front foot, held at the shoulders.', bw({ perSide: true })),
+      ex('tl7','C','Band Romanian Deadlift','Hamstrings',3,12,20,1,1,75,'Stand on the band, hands at your thighs. Hips back, back straight, knees soft, then drive the hips forward.', band()),
+      ex('tl3','A','Glute Bridge','Glutes',3,12,20,1,1,50,'Single-leg with no band, or both legs with a band over your hips held down by your hands. 1 s squeeze at the top.', bw()),
+      ex('tl8','A','Band Leg Curl','Hamstrings',3,12,20,1,1,60,'Band anchored low in the door, loop around your ankles, lying face down, heels towards your glutes. Alternative: towel leg curl on a smooth floor.', band()),
+      ex('tl5','A','Single-leg Calf Raise (step or book)','Calves',3,15,25,1,1,50,'Full stretch at the bottom, 2 s pause, half reps at the bottom at the end of the set.', bw({ perSide: true })),
+      ex('tl6','A','Dead Bug','Abs',2,10,10,2,2,50,'Lower back pressed to the floor, exhale as you extend the opposite arm and leg.', bw({ perSide: true }))
     ]}
   ];
 }
@@ -602,11 +607,15 @@ window.addEventListener('pagehide', flush);
    - session entries gain `pattern` (snapshot, same values)
    - settings gain `unit`, `incUpperLb`, `incLowerLb`
    - new keys: templates, meta                                          */
-function migrate(force) {
+function migrate(force, fromSchema) {
   var meta = load(K.meta, null) || { schema: 1 };
   if (!force && meta.schema >= SCHEMA) return false;
-  // schema 3: add the travel (bodyweight) days if they are missing
-  if (!program.days.some(function (d) { return d.travel; })) program.days = program.days.concat(defaultTravelDays());
+  var from = fromSchema != null ? fromSchema : meta.schema;
+  // schema 3: add the travel days if they are missing
+  // schema 4: the built-in travel days become the bands + bodyweight program (custom travel days are left alone)
+  var freshTravel = defaultTravelDays();
+  if (!program.days.some(function (d) { return d.travel; })) program.days = program.days.concat(freshTravel);
+  else if (from < 4) program.days = program.days.map(function (d) { return freshTravel.find(function (x) { return x.id === d.id; }) || d; });
   program.days.forEach(function (d) { d.exercises = d.exercises.map(normalizeEx); });
   sessions.forEach(function (s) {
     s.entries.forEach(function (en) {
@@ -711,6 +720,7 @@ function progression(p, region, excludeId) {
   var L = lastEntries(p.id, 2, excludeId);
   if (!L.length) {
     if (p.timed) return { kind: 'new', weight: null, reps: null, why: 'First time: hold as long as you can with good form, aiming for ' + range + '.' };
+    if (p.band) return { kind: 'new', weight: null, reps: null, why: 'First time: pick a band that gets you to RIR 1–2 within ' + range + ' reps. Write the band in the exercise note.' };
     if (p.bodyweight) return { kind: 'new', weight: null, reps: null, why: 'First time: do one set to your true max to learn your limit, then stop 1–2 reps short (' + range + ').' };
     return { kind: 'new', weight: null, reps: null, why: 'First time: find a load for ' + range + ' reps at RIR ' + p.rir + '.' };
   }
@@ -735,6 +745,7 @@ function progression(p, region, excludeId) {
   var logged = work.filter(function (s) { return s.rir != null; }).map(function (s) { return s.rir; });
   var gap = logged.length ? minOf(logged) - prev.targetRir : 0; // negative = harder than planned
   if (repsTop && gap >= -1) {
+    if (top === 0 && p.band) return { kind: 'up', weight: 0, reps: p.repMin, why: 'Top of range hit (' + repsList + '). Use a stronger band, combine two, or step further from the anchor.' };
     if (top === 0) return { kind: 'up', weight: 0, reps: p.repMin, why: 'Top of range hit (' + repsList + '). Add load or a harder variation.' };
     var upStep = U() === 'lb' ? 2.5 : 0.5;
     var nextD = Math.ceil((topD + incD(p, region)) / upStep - 1e-6) * upStep;
@@ -756,18 +767,18 @@ function progression(p, region, excludeId) {
   return { kind: 'hold', weight: top, reps: Math.min(prev.repMax, minR + 1), why: 'In the range (' + repsList + '). Keep the load and add a rep to your weakest set.' };
 }
 function nextTargetTxt(g, p) {
-  if (g.kind === 'new') return 'Next target: ' + (p.bodyweight ? 'max reps, stop 1–2 short' : 'pick a load') + ' × ' + rangeTxt(p.repMin, p.repMax, p.perSide, p.timed);
-  var load = (p.bodyweight && !g.weight) ? 'bodyweight' : wl(g.weight, p.bodyweight);
+  if (g.kind === 'new') return 'Next target: ' + (p.band ? 'pick a band' : p.bodyweight ? 'max reps, stop 1–2 short' : 'pick a load') + ' × ' + rangeTxt(p.repMin, p.repMax, p.perSide, p.timed);
+  var load = (p.band && !g.weight) ? (g.kind === 'up' ? 'stronger band' : 'same band') : (p.bodyweight && !g.weight) ? 'bodyweight' : wl(g.weight, p.bodyweight);
   return 'Next target: ' + load + ' × ' + g.reps + (p.timed ? ' s' : '') + (p.perSide ? '/side' : '');
 }
 function planFromEx(e, week, day) {
   var t = target(e, week), re = !(day && day.travel) && !t.deload && needsReentry(e.id) && !!lastEntry(e.id);
-  return { id: e.id, repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight, timed: !!e.timed, increment: e.increment,
+  return { id: e.id, repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight, timed: !!e.timed, band: !!e.band, increment: e.increment,
     rir: re ? Math.min(4, t.rir + 1) : t.rir, deload: t.deload, reentry: re };
 }
 function planFromEntry(en, s) {
   var f = findEx(en.exId);
-  return { id: en.exId, repMin: en.repMin, repMax: en.repMax, perSide: en.perSide, bodyweight: en.bodyweight, timed: !!en.timed,
+  return { id: en.exId, repMin: en.repMin, repMax: en.repMax, perSide: en.perSide, bodyweight: en.bodyweight, timed: !!en.timed, band: !!en.band,
     increment: f ? f.ex.increment : null, rir: en.targetRir, deload: s.week >= 5 && !s.travel, reentry: !!en.reentry };
 }
 
@@ -992,7 +1003,7 @@ function startSession(day) {
   var s = { id: uid(), dayId: day.id, dayName: day.name, date: isoDate(), week: week, startedAt: Date.now(), completedAt: null, notes: '', bodyWeight: Number(settings.bodyWeight) || null, travel: trav,
     entries: day.exercises.map(function (e) {
       var t = trav ? target(e, 1) : target(e, week), pl = planFromEx(e, trav ? 1 : week, day), g = progression(pl, day.region);
-      return { exId: e.id, name: e.name, type: e.type, muscle: e.muscle, pattern: e.pattern, region: day.region, travel: trav, timed: !!e.timed, reentry: pl.reentry,
+      return { exId: e.id, name: e.name, type: e.type, muscle: e.muscle, pattern: e.pattern, region: day.region, travel: trav, timed: !!e.timed, band: !!e.band, reentry: pl.reentry,
         repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight,
         targetRir: pl.rir, targetSets: t.sets, rest: e.rest, superset: e.superset || '',
         technique: (week === 4 && !trav) ? (e.technique || '') : '', exNotes: e.notes || '', note: '', photo: false,
@@ -1083,7 +1094,7 @@ function travelBanner() {
   if (travelScheduled()) {
     var tr0 = settings.travel;
     return '<div class="callout"><strong>Travel mode from ' + fmtDate(tr0.from) + ' to ' + fmtDate(tr0.until) + '.</strong> Until then, train in the gym as usual. On ' + fmtDate(tr0.from) +
-      ' the app switches to the bodyweight workouts and pauses your block at week ' + tr0.pausedWeek + '.' +
+      ' the app switches to the band + bodyweight workouts and pauses your block at week ' + tr0.pausedWeek + '.' +
       '<div style="margin-top:8px"><button type="button" class="btn small" data-act="travel-cancel">Cancel travel mode</button></div></div>';
   }
   if (!travelOn()) {
@@ -1093,7 +1104,7 @@ function travelBanner() {
   var tr = settings.travel, over = isoDate() > tr.until;
   return '<div class="callout"><strong>' + (over ? 'Your trip ended on ' + fmtDate(tr.until) + '.' : 'Travel mode until ' + fmtDate(tr.until) + '.') + '</strong> ' +
     'Your gym block is paused at week ' + tr.pausedWeek + ' (' + esc(WEEK_NAMES[tr.pausedWeek]) + '), nothing is lost. ' +
-    'Do 3–4 bodyweight workouts, alternating Upper and Lower, taking each set to RIR 1–2. They count for your streak, muscle map and calories, but don\'t change your gym progression.' +
+    'Do 3–4 band + bodyweight workouts, alternating Upper and Lower, taking each set to RIR 1–2. Check your bands for cracks before each session, and anchor them on the hinge side of a locked door that opens away from you. They count for your streak, muscle map and calories, but don\'t change your gym progression.' +
     ' First time: one set of each exercise to your true max (RIR 0), to learn your limit.</div>';
 }
 function awayCard() {
@@ -1108,7 +1119,7 @@ function awayCard() {
   if (travelScheduled()) return '';
   var today = isoDate();
   return '<details class="tools" id="away"' + (ui.awayOpen ? ' open' : '') + '><summary>Away from the gym?</summary><div class="tools-body">' +
-    '<p class="muted small">Travel mode pauses your block (week ' + weekAt(today) + ' stays week ' + weekAt(today) + '), switches Today to bodyweight workouts, and brings you back to ' +
+    '<p class="muted small">Travel mode pauses your block (week ' + weekAt(today) + ' stays week ' + weekAt(today) + '), switches Today to the band + bodyweight workouts, and brings you back to ' +
     esc((gymDays()[0] || { name: 'the first day' }).name) + ' when you return. Logged progress is never touched.</p>' +
     '<div class="grid2"><label class="field"><span>From</span><input type="date" id="travel-from" value="' + today + '"></label>' +
     '<label class="field"><span>Until</span><input type="date" id="travel-until" value="' + addDaysISO(today, 6) + '"></label></div>' +
@@ -1200,7 +1211,8 @@ function renderEntry(s, en, i) {
   var last = lastEntry(en.exId, s.id), b = bests(en.exId, s.id);
   var p = planFromEntry(en, s), g = progression(p, en.region, s.id);
   var lastTxt = last ? 'Last (' + fmtDate(last.session.date) + '): ' +
-    last.entry.sets.filter(isWork).map(function (x) { return fmtW(x.w) + '×' + x.r + (x.rir != null ? '@' + x.rir : ''); }).join(', ') : 'No previous session';
+    last.entry.sets.filter(isWork).map(function (x) { return (x.w ? fmtW(x.w) + '×' : '') + x.r + (en.timed ? ' s' : '') + (x.rir != null ? '@' + x.rir : ''); }).join(', ') +
+    (last.entry.note ? ' (note: ' + last.entry.note + ')' : '') : 'No previous session';
   var flag = s.week < 5 ? deloadFlag(en.exId, s.id) : null;
   var wn = 0, rows = en.sets.map(function (st, si) {
     var pv = prevFor(s, en, si);
@@ -1239,7 +1251,7 @@ function renderEntry(s, en, i) {
     '<button type="button" class="btn small" data-act="plates" aria-expanded="' + !!ui.platesOpen[i] + '">Plates</button>' +
     '<button type="button" class="btn small" data-act="photo-add">' + (en.photo ? 'New photo' : 'Photo') + '</button>' +
     '<span></span></div>' + plates + photo +
-    '<label class="field" style="margin:0"><span>Note for this exercise</span><input type="text" data-f="exnote" value="' + esc(en.note) + '" placeholder="Seat 4, felt knee, etc."></label>' +
+    '<label class="field" style="margin:0"><span>Note for this exercise</span><input type="text" data-f="exnote" value="' + esc(en.note) + '" placeholder="' + (en.band ? 'Band used, e.g. red band, 2 steps from door' : 'Seat 4, felt knee, etc.') + '"></label>' +
     '</article>';
 }
 function updateKcal(s) {
@@ -1269,7 +1281,7 @@ function renderProgram() {
   var h = '<h2>Program</h2><p class="muted">Changes apply to new sessions. Sessions you already logged keep what you did.</p>';
   var travelHeadDone = false;
   program.days.forEach(function (d) {
-    if (d.travel && !travelHeadDone) { travelHeadDone = true; h += '<h2 style="margin-top:24px">Travel days</h2><p class="muted">Bodyweight workouts used in travel mode. Edit them like any other day.</p>'; }
+    if (d.travel && !travelHeadDone) { travelHeadDone = true; h += '<h2 style="margin-top:24px">Travel days</h2><p class="muted">Bands + bodyweight workouts used in travel mode. Edit them like any other day.</p>'; }
     h += '<section class="card" aria-labelledby="pd-' + esc(d.id) + '"><div class="day-head"><div><h3 id="pd-' + esc(d.id) + '">' + esc(d.name) + '</h3>' +
       '<p class="muted small">' + esc(d.weekday) + ': ' + esc(d.focus) + '</p></div>' +
       '<div class="chips"><button type="button" class="btn small ghost" data-act="edit-day" data-day="' + esc(d.id) + '">Edit day</button>' +
@@ -2018,7 +2030,7 @@ function openExDialog(dayId, exId) {
   EF('increment').value = base.increment == null ? '' : base.increment;
   EF('superset').value = base.superset || '';
   EF('technique').value = base.technique || '';
-  EF('perSide').checked = !!base.perSide; EF('bodyweight').checked = !!base.bodyweight; EF('timed').checked = !!base.timed;
+  EF('perSide').checked = !!base.perSide; EF('bodyweight').checked = !!base.bodyweight; EF('timed').checked = !!base.timed; EF('band').checked = !!base.band;
   EF('notes').value = base.notes || '';
   $('#ex-error').textContent = '';
   $('#ex-delete').hidden = !e;
@@ -2039,7 +2051,7 @@ exForm.addEventListener('submit', function (ev) {
   var day = findDay(editing.dayId);
   var data = { name: name, type: EF('type').value, muscle: EF('muscle').value, pattern: EF('pattern').value, sets: sets, setsW34: setsW34 == null ? sets : setsW34,
     repMin: repMin, repMax: repMax, rirWeeks: rir, rest: rest, increment: inc, superset: EF('superset').value.trim(),
-    technique: EF('technique').value.trim(), perSide: EF('perSide').checked, bodyweight: EF('bodyweight').checked, timed: EF('timed').checked, notes: EF('notes').value.trim() };
+    technique: EF('technique').value.trim(), perSide: EF('perSide').checked, bodyweight: EF('bodyweight').checked, timed: EF('timed').checked, band: EF('band').checked, notes: EF('notes').value.trim() };
   if (editing.exId) Object.assign(day.exercises.find(function (x) { return x.id === editing.exId; }), data);
   else day.exercises.push(normalizeEx(Object.assign({ id: uid() }, data)));
   saveProgram(); closeDlg(exDlg); render(); toast(editing.exId ? 'Exercise saved' : 'Exercise added');
@@ -2094,7 +2106,7 @@ $('#import-file').addEventListener('change', function (ev) {
     sessions = data.sessions.map(normalizeSession).filter(Boolean);
     settings = Object.assign(defaultSettings(), data.settings || {});
     templates = Array.isArray(data.templates) ? data.templates : [];
-    migrate(true); // brings v1 backups up to schema 2
+    migrate(true, Number(data.schema) || 1); // brings older backups up to the current schema
     ui.justCompleted = null; ui.volWeek = null; ui.progressEx = null; ui.selectedDay = null;
     render(); toast('Backup imported');
   };
