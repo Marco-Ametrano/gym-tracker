@@ -259,6 +259,29 @@ details.hist ul{margin:4px 0 10px;padding-left:18px;font-size:.9rem;color:var(--
 .mm-info b{font-family:var(--font-display);font-size:1.1rem}
 @media (max-width:420px){ .mm-fig{flex-basis:100%;max-width:230px} }
 
+/* Info boxes, coach, guide, bodyweight */
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-4px 0 -4px 4px;vertical-align:middle;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--yellow);font-weight:700;font-size:.95rem;font-family:var(--font-body);line-height:1;flex-shrink:0}
+.info-btn[aria-expanded="true"]{background:var(--yellow);color:#1C1604;border-color:var(--yellow)}
+.info-btn::before{content:"";position:absolute;width:44px;height:44px}
+.info-box{background:var(--surface-2);border-left:3px solid var(--yellow);border-radius:0 var(--radius-s) var(--radius-s) 0;padding:10px 12px;margin:8px 0;font-size:.93rem;color:var(--text);font-family:var(--font-body);font-weight:400}
+.info-box h4{margin:0 0 4px;font-family:var(--font-display);font-size:1.08rem}
+.info-box p{margin:0 0 6px}
+.info-box ol{margin:4px 0 8px;padding-left:1.2em}
+.info-box ol li{margin-bottom:3px}
+.info-ex{background:var(--bg);border-radius:6px;padding:8px 10px;margin:6px 0;font-variant-numeric:tabular-nums}
+.info-ex b{color:var(--yellow);font-weight:600}
+.info-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.coach{border:1px solid var(--yellow);border-radius:var(--radius-s);padding:10px 12px;margin:8px 0}
+.coach .step{font-family:var(--font-display);font-size:1.2rem;font-weight:700;margin:2px 0 8px}
+.coach .count{font-size:.82rem;color:var(--muted)}
+.bw-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:.88rem;color:var(--muted)}
+.guide-sec{margin-bottom:20px}
+.guide-sec>h3{margin:18px 0 8px;color:var(--muted);font-size:1rem;text-transform:uppercase;letter-spacing:.04em}
+.guide-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.guide-chips button{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:.9rem;font-weight:600}
+.guide-item{scroll-margin-top:72px}
+.guide-item.hl{box-shadow:0 0 0 2px var(--yellow)}
+
 /* Bottom tabs */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabbar button{min-height:64px;background:none;border:0;color:var(--muted);font-family:var(--font-display);font-size:1.05rem;font-weight:600}
@@ -299,6 +322,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
   <div class="top-right">
     <span class="weekpill" id="weekpill"></span>
     <button type="button" class="unit-btn" id="unit-btn"></button>
+    <button type="button" class="unit-btn" id="guide-btn" aria-label="Guide: what the terms and tips mean">?</button>
   </div>
 </header>
 
@@ -397,7 +421,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
 /* ================= Constants ================= */
 var NS = 'ut_tracker_v1_';
 var K = { program: NS + 'program', sessions: NS + 'sessions', settings: NS + 'settings', templates: NS + 'templates', meta: NS + 'meta' };
-var SCHEMA = 4;
+var SCHEMA = 5;
 var MUSCLES = ['Chest','Back','Side delts','Rear delts','Front delts','Biceps','Triceps','Quads','Hamstrings','Glutes','Adductors','Calves','Abs'];
 var WEEK_NAMES = { 1: 'Calibration', 2: 'Build', 3: 'Build + volume', 4: 'Push', 5: 'Deload' };
 var GEN_RIR = { C: [3,2,2,1], A: [2,2,1,1] };
@@ -442,7 +466,9 @@ function toD(kg) { return kg == null ? null : (U() === 'lb' ? kg * LB : kg); }
 function fromD(v) { return v == null ? null : (U() === 'lb' ? v / LB : v); }
 function fmtNum(v, dec) { var f = Math.pow(10, dec); return String(Math.round(v * f) / f); }
 function fmtW(kg) { return kg == null ? '' : fmtNum(toD(kg), U() === 'lb' ? 1 : 2); }
-function wl(kg, bw) { return (kg === 0 && bw) ? 'bodyweight' : fmtW(kg) + ' ' + U(); }
+function wl(kg, bw) { if (bw) return kg ? 'BW + ' + fmtW(kg) + ' ' + U() : 'BW'; return fmtW(kg) + ' ' + U(); }
+function fmtSetW(x) { return x.bw ? (x.w ? 'BW+' + fmtW(x.w) : 'BW') : fmtW(x.w); }
+function isBwEx(en) { return !!(en && en.bodyweight && !en.band); }
 function roundStepD() { return U() === 'lb' ? 1 : 0.5; }
 
 /* ================= Storage ================= */
@@ -589,7 +615,7 @@ var templates = load(K.templates, []);
 if (!Array.isArray(templates)) templates = [];
 
 var ui = { tab: 'today', selectedDay: null, progressEx: null, volWeek: null, justCompleted: null, chart: null,
-  toolsOpen: false, plateW: '', plateUnit: null, rpe: '', rir: '', platesOpen: {}, photoBig: {}, photoFor: null };
+  toolsOpen: false, plateW: '', plateUnit: null, rpe: '', rir: '', platesOpen: {}, photoBig: {}, photoFor: null, info: {}, coach: null, guideKey: null };
 
 function saveProgram() { save(K.program, program); }
 function saveSessions() { save(K.sessions, sessions); }
@@ -619,6 +645,8 @@ function migrate(force, fromSchema) {
   program.days.forEach(function (d) { d.exercises = d.exercises.map(normalizeEx); });
   sessions.forEach(function (s) {
     s.entries.forEach(function (en) {
+      // schema 5: sets of bodyweight (non-band) exercises become BW sets; any weight logged there was added load
+      if (from < 5 && en.bodyweight && !en.band && en.bwMode == null) { en.bwMode = true; en.sets.forEach(function (x) { x.bw = true; }); }
       if (['push','pull','none'].indexOf(en.pattern) < 0) {
         var f = findEx(en.exId);
         en.pattern = f ? f.ex.pattern : defaultPattern(en.muscle, en.name);
@@ -691,7 +719,7 @@ function lastEntries(exId, n, excludeId) {
 }
 function lastEntry(exId, excludeId) { return lastEntries(exId, 1, excludeId)[0] || null; }
 function topW(entry) { return maxOf(entry.sets.filter(isWork).map(function (x) { return x.w || 0; })); }
-function bestE(entry) { return maxOf(entry.sets.filter(isWork).map(function (x) { return e1rm(x.w, x.r); })); }
+function bestE(entry) { return maxOf(entry.sets.filter(function (x) { return isWork(x) && !x.bw; }).map(function (x) { return e1rm(x.w, x.r); })); }
 function target(e, week) {
   if (week >= 5) return { sets: Math.max(1, Math.ceil(e.sets / 2)), rir: 4, deload: true };
   return { sets: week >= 3 ? e.setsW34 : e.sets, rir: e.rirWeeks[week - 1], deload: false };
@@ -753,7 +781,7 @@ function progression(p, region, excludeId) {
       why: 'Top of range hit on every set (' + repsList + '). Add load, reps restart at ' + p.repMin + '.' };
   }
   if (repsTop) {
-    return { kind: 'hold', weight: top, reps: prev.repMax,
+    return { kind: 'hold', sub: 'hard', weight: top, reps: prev.repMax,
       why: 'Top reps hit, but ' + (-gap) + ' reps closer to failure than the RIR ' + prev.targetRir + ' target. Repeat with more in reserve.' };
   }
   var below = prev.repMin - minR;
@@ -763,12 +791,12 @@ function progression(p, region, excludeId) {
     return { kind: 'down', weight: top > 0 ? fromD(roundTo(topD * 0.925, step)) : 0, reps: p.repMin,
       why: (below >= 2 ? 'Reps well below the range' : 'Below the range two sessions running') + ' (' + repsList + '). Drop about 5–10% and rebuild.' };
   }
-  if (below >= 1) return { kind: 'hold', weight: top, reps: prev.repMin, why: 'Just below the range (' + repsList + '). Keep the load and reach ' + prev.repMin + ' on every set.' };
+  if (below >= 1) return { kind: 'hold', sub: 'below', weight: top, reps: prev.repMin, why: 'Just below the range (' + repsList + '). Keep the load and reach ' + prev.repMin + ' on every set.' };
   return { kind: 'hold', weight: top, reps: Math.min(prev.repMax, minR + 1), why: 'In the range (' + repsList + '). Keep the load and add a rep to your weakest set.' };
 }
 function nextTargetTxt(g, p) {
   if (g.kind === 'new') return 'Next target: ' + (p.band ? 'pick a band' : p.bodyweight ? 'max reps, stop 1–2 short' : 'pick a load') + ' × ' + rangeTxt(p.repMin, p.repMax, p.perSide, p.timed);
-  var load = (p.band && !g.weight) ? (g.kind === 'up' ? 'stronger band' : 'same band') : (p.bodyweight && !g.weight) ? 'bodyweight' : wl(g.weight, p.bodyweight);
+  var load = (p.band && !g.weight) ? (g.kind === 'up' ? 'stronger band' : 'same band') : (p.bodyweight && !g.weight) ? 'BW' : wl(g.weight, p.bodyweight);
   return 'Next target: ' + load + ' × ' + g.reps + (p.timed ? ' s' : '') + (p.perSide ? '/side' : '');
 }
 function planFromEx(e, week, day) {
@@ -790,7 +818,7 @@ function bests(exId, excludeId) {
     s.entries.forEach(function (en) {
       if (en.exId !== exId) return;
       en.sets.forEach(function (st) {
-        if (!isWork(st) || !st.w) return;
+        if (!isWork(st) || !st.w || st.bw) return;
         if (st.w > b.maxW || (st.w === b.maxW && b.maxWset && st.r > b.maxWset.r)) { b.maxW = st.w; b.maxWset = { w: st.w, r: st.r, date: s.date }; }
         var e = e1rm(st.w, st.r);
         if (e > b.maxE) { b.maxE = e; b.maxEset = { w: st.w, r: st.r, date: s.date }; }
@@ -800,7 +828,7 @@ function bests(exId, excludeId) {
   return b;
 }
 function prKind(st, b) {
-  if (!isWork(st) || !st.w || !b.maxW) return null;
+  if (!isWork(st) || !st.w || st.bw || !b.maxW) return null;
   var heavier = st.w > b.maxW + 1e-6, better = e1rm(st.w, st.r) > b.maxE + 0.01;
   return heavier ? 'weight' : better ? 'e1rm' : null;
 }
@@ -1003,14 +1031,15 @@ function startSession(day) {
   var s = { id: uid(), dayId: day.id, dayName: day.name, date: isoDate(), week: week, startedAt: Date.now(), completedAt: null, notes: '', bodyWeight: Number(settings.bodyWeight) || null, travel: trav,
     entries: day.exercises.map(function (e) {
       var t = trav ? target(e, 1) : target(e, week), pl = planFromEx(e, trav ? 1 : week, day), g = progression(pl, day.region);
-      return { exId: e.id, name: e.name, type: e.type, muscle: e.muscle, pattern: e.pattern, region: day.region, travel: trav, timed: !!e.timed, band: !!e.band, reentry: pl.reentry,
+      var bwm = !!(e.bodyweight && !e.band);
+      return { exId: e.id, name: e.name, type: e.type, bwMode: bwm, muscle: e.muscle, pattern: e.pattern, region: day.region, travel: trav, timed: !!e.timed, band: !!e.band, reentry: pl.reentry,
         repMin: e.repMin, repMax: e.repMax, perSide: e.perSide, bodyweight: e.bodyweight,
         targetRir: pl.rir, targetSets: t.sets, rest: e.rest, superset: e.superset || '',
         technique: (week === 4 && !trav) ? (e.technique || '') : '', exNotes: e.notes || '', note: '', photo: false,
-        sets: Array.from({ length: t.sets }, function () { return { w: (e.bodyweight && !g.weight) ? null : g.weight, r: null, rir: null, warm: false, done: false }; }) };
+        sets: Array.from({ length: t.sets }, function () { return { w: (e.bodyweight && !g.weight) ? null : g.weight, r: null, rir: null, warm: false, done: false, bw: bwm }; }) };
     }) };
   sessions.push(s); saveSessions();
-  ui.justCompleted = null; ui.platesOpen = {}; ui.photoBig = {};
+  ui.justCompleted = null; ui.platesOpen = {}; ui.photoBig = {}; ui.info = {}; ui.coach = null;
   render(); window.scrollTo(0, 0);
 }
 function prevFor(s, en, si) {
@@ -1061,9 +1090,11 @@ function render() {
   if (ui.tab === 'today') html += renderToday();
   else if (ui.tab === 'program') html += renderProgram();
   else if (ui.tab === 'progress') html += renderProgress();
+  else if (ui.tab === 'guide') html += renderGuide();
   else html += renderSettings();
   view.innerHTML = html;
   if (ui.tab === 'progress') drawCharts();
+  if (ui.tab === 'guide' && ui.guideKey) { var gEl = document.getElementById('g-' + ui.guideKey); if (gEl && gEl.scrollIntoView) gEl.scrollIntoView({ block: 'start' }); }
   hydratePhotos(view);
 }
 
@@ -1099,7 +1130,7 @@ function travelBanner() {
   }
   if (!travelOn()) {
     if (!settings.reentrySince || !gymDays().some(function (d) { return d.exercises.some(function (e) { return needsReentry(e.id) && lastEntry(e.id); }); })) return '';
-    return '<p class="callout">Back from a break: the first session of each day uses your last loads with one more rep in reserve. Normal progression resumes after that.</p>';
+    return '<div class="callout">Back from a break: the first session of each day uses your last loads with one more rep in reserve. Normal progression resumes after that.' + infoBtn('g', 'reentry') + infoBox('g', 'reentry') + '</div>';
   }
   var tr = settings.travel, over = isoDate() > tr.until;
   return '<div class="callout"><strong>' + (over ? 'Your trip ended on ' + fmtDate(tr.until) + '.' : 'Travel mode until ' + fmtDate(tr.until) + '.') + '</strong> ' +
@@ -1137,7 +1168,7 @@ function renderIdle() {
     var sets = 0, vol = 0, prs = 0;
     done.entries.forEach(function (en) {
       var b = bests(en.exId, done.id), hit = false;
-      en.sets.forEach(function (st) { if (isWork(st)) { sets++; vol += (st.w || 0) * st.r; if (isPR(st, b)) hit = true; } });
+      en.sets.forEach(function (st) { if (isWork(st)) { sets++; vol += st.bw ? 0 : (st.w || 0) * st.r; if (isPR(st, b)) hit = true; } });
       if (hit) prs++;
     });
     h += '<p class="callout good"><strong>' + esc(done.dayName) + ' saved</strong> in ' + clock(done.completedAt - done.startedAt) + ', ' + kcalTxt(sessionEnergy(done).total) + ' burned. ' + sets + ' working sets, ' +
@@ -1151,8 +1182,8 @@ function renderIdle() {
       '<div class="stat"><b>' + a.week + '/' + gymDays().length + '</b><span>this week</span></div></div>';
     var stall = (week < 5 && !away) ? stallingLifts() : [];
     if (stall.length) {
-      h += '<div class="callout warn"><strong>Consider a deload week.</strong> Stalling: ' + esc(stall.slice(0, 4).join(', ')) + (stall.length > 4 ? ' and ' + (stall.length - 4) + ' more' : '') + '.' +
-        '<div style="margin-top:8px"><button type="button" class="btn small" data-act="start-deload">Switch to deload week</button></div></div>';
+      h += '<div class="callout warn"><strong>Consider a deload week.</strong>' + infoBtn('g', 'deload') + ' Stalling: ' + esc(stall.slice(0, 4).join(', ')) + (stall.length > 4 ? ' and ' + (stall.length - 4) + ' more' : '') + '.' +
+        '<div style="margin-top:8px"><button type="button" class="btn small" data-act="start-deload">Switch to deload week</button></div>' + infoBox('g', 'deload') + '</div>';
     }
   } else {
     h += '<div class="empty"><h3>No sessions logged yet</h3><p class="muted">Pick a day and press Start. Week 1 is for finding your loads and practising RIR, so leave a few reps in the tank.</p></div>';
@@ -1196,9 +1227,9 @@ function renderActive(s) {
     '<div class="sess-clock" aria-label="Session duration and calories"><span id="elapsed">' + clock(Date.now() - s.startedAt) + '</span><small>session time</small>' +
     '<span class="sess-kcal" id="sess-kcal">' + kcalTxt(sessionEnergy(s).total) + '</span></div></div>' +
     '<div class="rest-row"><span>Rest</span>' + restChips() + '</div>';
-  if (s.week === 4) h += '<p class="callout">Week 4: one intensity technique per session, on the last set of the marked exercise.</p>';
-  if (s.week >= 5) h += '<p class="callout">Deload week: half the sets, about 10% lighter, RIR 4. No techniques.</p>';
-  h += '<p class="pr-legend"><i></i>Red set number = new personal record</p>';
+  if (s.week === 4) h += '<div class="callout">Week 4: one intensity technique per session, on the last set of the marked exercise.' + infoBtn('g', 'technique') + infoBox('g', 'technique') + '</div>';
+  if (s.week >= 5 && !s.travel) h += '<div class="callout">Deload week: half the sets, about 10% lighter, RIR 4. No techniques.' + infoBtn('g', 'deload') + infoBox('g', 'deload') + '</div>';
+  h += '<div class="pr-legend"><i></i>Red set number = new personal record' + infoBtn('g', 'pr') + '</div>' + infoBox('g', 'pr');
   h += s.entries.map(function (en, i) { return renderEntry(s, en, i); }).join('');
   h += '<label class="field"><span>Session notes</span><textarea data-f="snote" placeholder="Sleep, energy, anything that felt off">' + esc(s.notes) + '</textarea></label>';
   h += '<div class="stack"><button type="button" class="btn primary block" data-act="complete">Finish session</button>' +
@@ -1207,11 +1238,143 @@ function renderActive(s) {
   h += '<div style="margin-top:16px">' + toolsPanel() + '</div>';
   return h;
 }
+/* ================= Explanations: info boxes, guided techniques, guide page ================= */
+function exampleCtx(o) {
+  // o: { w (kg|null), repMin, repMax, rir, next (kg|null), bw, band, pairA, pairB }
+  var c = Object.assign({ repMin: 6, repMax: 8, rir: 2 }, o || {});
+  c.generic = !c.w;
+  if (!c.w) c.w = 40;
+  var st = U() === 'lb' ? 5 : 2.5;
+  c.wTxt = wl(c.w);
+  c.lastTxt = c.last ? wl(c.last) : c.wTxt;
+  c.pct = function (f) { return fmtNum(Math.max(st, roundTo(toD(c.w) * f, st)), 1) + ' ' + U(); };
+  c.nextTxt = c.next ? wl(c.next) : c.pct(1) .replace(/^[\d.]+/, function (n) { return fmtNum(Number(n) + (U() === 'lb' ? 5 : 2.5), 1); });
+  c.lead = c.generic ? 'For example: ' : 'With your numbers: ';
+  return c;
+}
+var GUIDE = {
+  rir: { t: 'RIR: reps in reserve', what: 'How many more clean reps you could still have done when you ended the set. It sets how hard each set should be.',
+    how: ['Finish the set and ask: how many more could I do with good form?', 'Type that number in the RIR box. 0 means nothing left (failure).', 'Most people underestimate it at first: if unsure, guess one more.'],
+    ex: function (c) { return 'target ' + c.repMin + '–' + c.repMax + ' reps at RIR ' + c.rir + '. If ' + c.wTxt + ' is your limit for about ' + (c.repMax + c.rir) + ' reps, stop at ' + c.repMax + ' and log RIR ' + c.rir + '.'; } },
+  perside: { t: 'Reps per side (/side)', what: 'Reps are counted for each arm or leg. Do all reps on one side, then the other, then rest.',
+    ex: function (c) { return c.repMax + ' reps with the left leg, then ' + c.repMax + ' with the right: log ' + c.repMax + ', not ' + (2 * c.repMax) + '.'; } },
+  timed: { t: 'Timed sets', what: 'For holds like the plank you log seconds instead of reps. Stop when your form breaks, not when it starts to burn.',
+    ex: function () { return 'a 45 s plank with 1–2 good seconds left: log 45 in Sec, RIR 1.'; } },
+  'hint-new': { t: 'First time on an exercise', what: 'There is no history yet. Pick a weight you think you can lift for the rep range at the target RIR. If you guess wrong, the next suggestion corrects it.',
+    ex: function (c) { return 'range ' + c.repMin + '–' + c.repMax + ' at RIR ' + c.rir + ': choose a weight you could lift about ' + (c.repMax + c.rir) + ' times at most, and stop at ' + c.repMax + '.'; } },
+  'hint-up': { t: 'Add weight (▲)', what: 'Last time every working set reached the top of the rep range, without going harder than planned. Time to add load. Reps restart at the bottom of the range and you climb again.',
+    ex: function (c) { if (c.band) return 'last time 20, 20, 20 with the red band → today a stronger band (or two bands, or step further from the anchor), aiming for ' + c.repMin + '.';
+      if (c.bw) return 'last time ' + c.repMax + ', ' + c.repMax + ', ' + c.repMax + ' at bodyweight → make it harder (slower lowering, or the harder version in the notes), or add a backpack.';
+      return 'last time ' + c.lastTxt + ' × ' + c.repMax + ', ' + c.repMax + ', ' + c.repMax + ' → today ' + c.nextTxt + ' × ' + c.repMin + '.'; } },
+  'hint-hold': { t: 'Same weight, one more rep', what: 'You are inside the rep range but not at the top on every set. Keep the weight and add one rep, starting with your weakest set.',
+    ex: function (c) { return 'last time ' + c.lastTxt + ' × ' + c.repMax + ', ' + (c.repMax - 1) + ', ' + (c.repMax - 1) + ' → today aim for ' + c.repMax + ', ' + c.repMax + ', ' + (c.repMax - 1) + ' with the same weight.'; } },
+  'hint-hard': { t: 'Reps hit, but too hard', what: 'You reached the top of the range, but closer to failure than the target RIR. Repeat the same weight with more reps in reserve, so the next increase is solid.',
+    ex: function (c) { return 'target RIR ' + c.rir + ', last time ' + c.lastTxt + ' × ' + c.repMax + ' at RIR 0 → today same weight, stop when ' + c.rir + ' reps are left.'; } },
+  'hint-below': { t: 'Just below the range', what: 'At least one set fell short of the bottom of the range. Keep the weight and aim to reach it on every set. If it happens twice, the app suggests dropping a little.',
+    ex: function (c) { return 'range ' + c.repMin + '–' + c.repMax + ', last time ' + c.lastTxt + ' × ' + c.repMin + ', ' + (c.repMin - 1) + ', ' + (c.repMin - 1) + ' → today same weight, aim for ' + c.repMin + ' on every set.'; } },
+  'hint-down': { t: 'Drop a little (▼)', what: 'Reps were well below the range, or below it twice in a row. Lower the weight about 7% and build back up. Not a failure: it often follows poor sleep or too big a jump.',
+    ex: function (c) { return c.lastTxt + ' × ' + Math.max(1, c.repMin - 2) + ' → today ' + (c.next ? wl(c.next) : c.pct(0.925)) + ' × ' + c.repMin + '.'; } },
+  reentry: { t: 'First session back (+1 RIR)', what: 'After a break, the first session of each day uses your last weights with one extra rep in reserve, so you ease back in. Normal progression resumes next time.',
+    ex: function (c) { return 'normally RIR ' + Math.max(0, c.rir - 1) + ' → today RIR ' + c.rir + ' with ' + c.wTxt + '.'; } },
+  deload: { t: 'Deload week', what: 'An easier week to recover: half the sets, about 10% lighter, RIR 4. Fatigue drops while strength stays, so you come back stronger.',
+    how: ['Week 5 is a planned deload.', '"Consider a deload week" appears early if a lift gets weaker 3 sessions in a row, or you go all-out (RIR 0–1) 3 times without adding weight.', 'To start one: Today → "Switch to deload week". Afterwards set Current week back to Automatic in Settings.'],
+    ex: function (c) { return c.wTxt + ' × 3 sets at RIR 1 → deload ' + c.pct(0.9) + ' × 2 sets at RIR 4.'; } },
+  technique: { t: 'Week 4 techniques', what: 'In week 4, one exercise per session gets an intensity technique on its LAST set only: rest-pause or stripping. Both take the set past failure, so they go on machines or cables, never on heavy leg exercises. Tap "Start guided set" on the card to be walked through it.' },
+  restpause: { t: 'Rest-pause', what: 'Your last set taken to failure, then two short mini-sets with the same weight after 20 seconds of rest. It squeezes extra hard reps out of one set.',
+    how: ['Do the last set to failure (RIR 0).', 'Rest 20 seconds. Don\'t change the weight.', 'Do as many reps as you can (usually 3–5).', 'Rest 20 seconds, then a last mini-set (usually 1–3).', 'Log ONE row: the weight, total reps, RIR 0. Write the split in the note.'],
+    ex: function (c) { return c.wTxt + ' × ' + c.repMax + ' to failure → 20 s → about 4 → 20 s → about 2. Log ' + c.wTxt + ', ' + (c.repMax + 6) + ' reps, RIR 0, note "' + c.repMax + '+4+2".'; },
+    steps: function (c) { return [{ t: 'Last set: ' + c.wTxt + ' to failure (about ' + c.repMax + ' reps)' }, { t: 'Rest 20 s. Don\'t change the weight.', rest: 20 }, { t: 'Mini-set: as many reps as you can (about 3–5)' }, { t: 'Rest 20 s.', rest: 20 }, { t: 'Last mini-set: as many as you can (about 1–3)' },
+      { t: 'Done. Log one row: ' + c.wTxt + ', total reps, RIR 0, and the split in the note (e.g. ' + c.repMax + '+4+2).', end: true }]; } },
+  stripping: { t: 'Stripping (drop set)', what: 'Your last set taken to failure, then you immediately lower the weight by about 20% and continue to failure, twice, with no rest. On machines just move the pin.',
+    how: ['Do the last set to failure.', 'No rest: lower the weight about 20%, go to failure again.', 'No rest: lower it again, go to failure.', 'Log ONE row with the first weight and total reps, and the drops in the note.'],
+    ex: function (c) { return c.wTxt + ' × ' + c.repMax + ' → straight to ' + c.pct(0.8) + ' × about 6 → straight to ' + c.pct(0.6) + ' × about 5. Note: "' + c.repMax + ' @' + c.wTxt + ', 6 @' + c.pct(0.8) + ', 5 @' + c.pct(0.6) + '".'; },
+    steps: function (c) { return [{ t: 'Last set: ' + c.wTxt + ' to failure' }, { t: 'No rest: drop to about ' + c.pct(0.8) + ', to failure' }, { t: 'No rest: drop to about ' + c.pct(0.6) + ', to failure' },
+      { t: 'Done. Log one row: ' + c.wTxt + ', total reps, RIR 0, and the drops in the note.', end: true }]; } },
+  twentyones: { t: '21s', what: '21 reps in one set: 7 in the bottom half of the movement, 7 in the top half, then 7 full reps, with about 60% of your normal weight and no rest. Optional on curls in week 4.',
+    ex: function (c) { return 'normal ' + c.wTxt + ' → use about ' + c.pct(0.6) + ': 7 bottom half + 7 top half + 7 full. Log ' + c.pct(0.6) + ' × 21.'; },
+    steps: function (c) { return [{ t: 'Use about ' + c.pct(0.6) + '. 7 reps in the bottom half' }, { t: '7 reps in the top half' }, { t: '7 full reps' }, { t: 'Done. Log ' + c.pct(0.6) + ' × 21.', end: true }]; } },
+  superset: { t: 'Superset (a/b)', what: 'Two exercises back to back, resting only after the second one. Marked "a" and "b" (7a, 7b). The rest timer starts only after the b exercise.',
+    ex: function (c) { return 'one set of ' + (c.pairA || 'curls') + ', straight to one set of ' + (c.pairB || 'pushdowns') + ', then rest. Repeat for every set.'; } },
+  rampup: { t: 'Ramp-up (warm-up sets)', what: 'Lighter sets before the working sets, to warm the joints and rehearse the movement. They never count for volume or progression. The Ramp-up button adds them for you.',
+    ex: function (c) { return 'working weight ' + c.wTxt + ' → ' + rampSets(c.w).map(function (x) { return fmtW(x.w) + '×' + x.r; }).join(', ') + ', then your working sets.'; } },
+  e1rm: { t: 'e1RM (estimated 1-rep max)', what: 'The most you could lift once, estimated from a set: weight × (1 + reps ÷ 30). It lets you compare sets with different reps. Green ▲ means stronger than last time. Bodyweight sets are not counted.',
+    ex: function (c) { return c.wTxt + ' × ' + c.repMax + ' → about ' + fmtW(roundTo(e1rm(c.w, c.repMax), 0.5)) + ' ' + U() + '.'; } },
+  pr: { t: 'Personal record (red set)', what: 'A working set better than any before: heavier (heaviest set), or more reps at a weight (best e1RM). The set number turns red.',
+    ex: function (c) { return 'your best was ' + c.wTxt + ' × ' + c.repMax + '. Today ' + c.wTxt + ' × ' + (c.repMax + 1) + ' → new best e1RM, even with the same weight.'; } },
+  bw: { t: 'Bodyweight (BW)', what: 'Your body is the load. With "Bodyweight" selected on the card, leave the weight empty; type a number only if you add load (a backpack, a dumbbell). BW sets progress by reps and are not counted in e1RM or records.',
+    ex: function () { return 'BW = ' + (settings.bodyWeight ? wl(Number(settings.bodyWeight)) : 'your weight') + ' (Settings → Body). Push-ups: leave it empty → logged as BW. Chin-ups with a 5 kg backpack: type 5 → BW + 5 kg.'; } },
+  band: { t: 'Resistance bands', what: 'Bands are not logged as weight. Leave the weight empty and write the band in the note. At the top of the range: stronger band, two bands, or step further from the anchor.',
+    ex: function () { return 'note "red, 2 steps from the door", 20, 20, 19 reps → next time same band; 20, 20, 20 → stronger band.'; } }
+};
+var GUIDE_GROUPS = [
+  ['Effort', ['rir', 'perside', 'timed']],
+  ['What the hints mean', ['hint-new', 'hint-up', 'hint-hold', 'hint-hard', 'hint-below', 'hint-down', 'reentry', 'deload']],
+  ['Techniques', ['technique', 'restpause', 'stripping', 'twentyones', 'superset', 'rampup']],
+  ['Numbers', ['e1rm', 'pr']],
+  ['Load', ['bw', 'band']]
+];
+function hintKey(g) {
+  if (!g) return null;
+  if (g.kind === 'hold') return g.sub === 'hard' ? 'hint-hard' : g.sub === 'below' ? 'hint-below' : 'hint-hold';
+  return { 'new': 'hint-new', up: 'hint-up', down: 'hint-down', reentry: 'reentry', deload: 'deload' }[g.kind] || null;
+}
+function techKey(txt) {
+  if (/rest-?pause/i.test(txt || '')) return 'restpause';
+  if (/strip|drop.?set/i.test(txt || '')) return 'stripping';
+  if (/\b21s\b/i.test(txt || '')) return 'twentyones';
+  return null;
+}
+function infoId(scope, key) { return 'info-' + scope + '-' + key; }
+function infoBtn(scope, key, label) {
+  var open = !!(ui.info && ui.info[scope + '|' + key]);
+  return '<button type="button" class="info-btn" data-act="info" data-scope="' + scope + '" data-key="' + key + '" aria-expanded="' + open + '" aria-controls="' + infoId(scope, key) +
+    '" aria-label="What does this mean: ' + esc(label || GUIDE[key].t) + '">i</button>';
+}
+function guideBody(key, c, scope) {
+  var gd = GUIDE[key], h = '<p>' + esc(gd.what) + '</p>';
+  if (gd.how) h += '<ol>' + gd.how.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol>';
+  if (gd.ex) h += '<div class="info-ex">' + esc(c.lead) + '<b>' + esc(gd.ex(c)) + '</b></div>';
+  return h;
+}
+function infoBox(scope, key, c, extra) {
+  if (!(ui.info && ui.info[scope + '|' + key]) || !GUIDE[key]) return '';
+  return '<div class="info-box" id="' + infoId(scope, key) + '"><h4>' + esc(GUIDE[key].t) + '</h4>' + guideBody(key, c || exampleCtx(), scope) + (extra || '') +
+    '<div class="info-links"><button type="button" class="btn small ghost" data-act="guide" data-key="' + key + '">More in the guide</button></div></div>';
+}
+function coachHtml(i, key, c) {
+  var gd = GUIDE[key]; if (!gd || !gd.steps) return '';
+  var co = ui.coach && ui.coach.ei === i && ui.coach.key === key ? ui.coach : null;
+  if (!co) return '<button type="button" class="btn small primary" data-act="coach-start" data-key="' + key + '">Start guided ' + esc(gd.t.toLowerCase()) + '</button>';
+  var steps = gd.steps(c), stp = steps[Math.min(co.step, steps.length - 1)];
+  return '<div class="coach" aria-live="polite"><div class="count">' + esc(gd.t) + ', step ' + (co.step + 1) + ' of ' + steps.length + '</div>' +
+    '<div class="step">' + esc(stp.t) + '</div><div class="chips">' +
+    (stp.end ? '<button type="button" class="btn small primary" data-act="coach-stop">Close</button>'
+      : '<button type="button" class="btn small primary" data-act="coach-next">' + (steps[co.step + 1] && steps[co.step + 1].rest ? 'Done, start 20 s' : 'Done, next step') + '</button>' +
+        '<button type="button" class="btn small" data-act="coach-stop">Stop</button>') + '</div></div>';
+}
+function entryCtx(s, en, i, g) {
+  var lst = en.bwMode ? null : (lastEntry(en.exId, s.id) ? topW(lastEntry(en.exId, s.id).entry) || null : null);
+  var ww = (en.bwMode ? null : workingWeightFor(s, en)) || null, nx = s.entries[i + 1], pv = s.entries[i - 1], pair = {};
+  if (/a$/i.test(en.superset || '') && nx) pair = { pairA: en.name, pairB: nx.name };
+  else if (/b$/i.test(en.superset || '') && pv) pair = { pairA: pv.name, pairB: en.name };
+  return exampleCtx(Object.assign({ w: ww, repMin: en.repMin, repMax: en.repMax, rir: en.targetRir, next: g && (g.kind === 'up' || g.kind === 'down') && g.weight ? g.weight : null, last: lst, bw: !!en.bwMode, band: !!en.band }, pair));
+}
+function renderGuide() {
+  var c = exampleCtx({ w: null });
+  var h = '<h2>Guide</h2><p class="muted">What every term, tip and technique in the app means, with an example. On a workout card, tap <b>i</b> next to a line to see the same explanation with your own numbers.</p>' +
+    '<div class="guide-chips">' + GUIDE_GROUPS.map(function (gr) { return gr[1].map(function (k) { return '<button type="button" data-act="guide" data-key="' + k + '">' + esc(GUIDE[k].t.replace(/ \(.*\)$/, '')) + '</button>'; }).join(''); }).join('') + '</div>';
+  GUIDE_GROUPS.forEach(function (gr) {
+    h += '<section class="guide-sec"><h3>' + esc(gr[0]) + '</h3>' + gr[1].map(function (k) {
+      return '<article class="card guide-item' + (ui.guideKey === k ? ' hl' : '') + '" id="g-' + k + '"><h3>' + esc(GUIDE[k].t) + '</h3><div style="margin-top:6px">' + guideBody(k, c) + '</div></article>';
+    }).join('') + '</section>';
+  });
+  return h;
+}
 function renderEntry(s, en, i) {
   var last = lastEntry(en.exId, s.id), b = bests(en.exId, s.id);
   var p = planFromEntry(en, s), g = progression(p, en.region, s.id);
   var lastTxt = last ? 'Last (' + fmtDate(last.session.date) + '): ' +
-    last.entry.sets.filter(isWork).map(function (x) { return (x.w ? fmtW(x.w) + '×' : '') + x.r + (en.timed ? ' s' : '') + (x.rir != null ? '@' + x.rir : ''); }).join(', ') +
+    last.entry.sets.filter(isWork).map(function (x) { return (x.bw ? fmtSetW(x) + '×' : x.w ? fmtW(x.w) + '×' : '') + x.r + (en.timed ? ' s' : '') + (x.rir != null ? '@' + x.rir : ''); }).join(', ') +
     (last.entry.note ? ' (note: ' + last.entry.note + ')' : '') : 'No previous session';
   var flag = s.week < 5 ? deloadFlag(en.exId, s.id) : null;
   var wn = 0, rows = en.sets.map(function (st, si) {
@@ -1220,7 +1383,7 @@ function renderEntry(s, en, i) {
     var nm = st.warm ? 'Warm-up set' : 'Set ' + label;
     return '<div class="set-row' + (st.warm ? ' warm' : '') + (st.done ? ' done' : '') + (isPR(st, b) ? ' is-pr' : '') + '" data-si="' + si + '">' +
       '<button type="button" class="set-type" data-act="toggle-warm" aria-label="' + nm + '. Tap to switch between warm-up and working">' + label + '</button>' +
-      '<input type="text" inputmode="decimal" autocomplete="off" data-f="w" value="' + fmtW(st.w) + '" placeholder="' + (pv && pv.w != null ? fmtW(pv.w) : U()) + '" aria-label="' + nm + ' weight in ' + U() + '">' +
+      '<input type="text" inputmode="decimal" autocomplete="off" data-f="w" value="' + fmtW(st.w) + '" placeholder="' + (st.bw ? (pv && pv.w ? '+' + fmtW(pv.w) : 'BW') : (pv && pv.w != null ? fmtW(pv.w) : U())) + '" aria-label="' + nm + (st.bw ? ' added load in ' + U() + ', empty for bodyweight only' : ' weight in ' + U()) + '">' +
       '<input type="text" inputmode="numeric" autocomplete="off" data-f="r" value="' + (st.r == null ? '' : st.r) + '" placeholder="' + (pv && pv.r != null ? pv.r : 'reps') + '" aria-label="' + nm + (en.timed ? ' seconds' : ' reps') + '">' +
       '<input type="text" inputmode="numeric" autocomplete="off" data-f="rir" value="' + (st.rir == null ? '' : st.rir) + '" placeholder="' + (st.warm ? '–' : en.targetRir) + '" aria-label="' + nm + ' reps in reserve">' +
       '<button type="button" class="check" data-act="done" aria-pressed="' + !!st.done + '" aria-label="' + (st.done ? 'Undo ' : 'Mark ') + nm + ' done">✓</button>' +
@@ -1232,20 +1395,30 @@ function renderEntry(s, en, i) {
   var photo = en.photo ? '<div class="photo-wrap' + (ui.photoBig[i] ? ' big' : '') + '"><img class="thumb' + (ui.photoBig[i] ? ' big' : '') + '" data-photo="' + esc(pid) + '" alt="Photo for ' + esc(en.name) + '" data-act="photo-zoom" tabindex="0" role="button">' +
     '<button type="button" class="btn small ghost" data-act="photo-del">Remove photo</button></div>' : '';
   var ntCls = g.kind === 'up' ? 'up' : g.kind === 'down' ? 'down' : '';
+  var sc = 'e' + i, c = entryCtx(s, en, i, g), hk = hintKey(g), tk = techKey(en.technique), nk = techKey(en.exNotes);
+  var e1 = e1Html(e1Trend(en.exId, en, s.id));
+  var bwRow = isBwEx(en) ? '<div class="bw-row"><span>Load</span><div class="seg" role="group" aria-label="Load type for ' + esc(en.name) + '">' +
+    '<button type="button" data-act="bw-mode" data-v="1" aria-pressed="' + !!en.bwMode + '">Bodyweight</button><button type="button" data-act="bw-mode" data-v="0" aria-pressed="' + !en.bwMode + '">Weight</button></div>' +
+    infoBtn(sc, 'bw') + (en.bwMode ? '<span>Leave empty, or type added load</span>' : '') + '</div>' + infoBox(sc, 'bw', c) : '';
   return '<article class="ex" data-ei="' + i + '" aria-labelledby="ex-h-' + i + '">' +
     '<div class="ex-title"><span class="tag" title="' + (en.type === 'C' ? 'Compound' : 'Accessory') + '">' + esc(en.type) + '</span>' +
-    '<h3 id="ex-h-' + i + '">' + esc(en.name) + '</h3>' + (en.superset ? '<span class="ss">Superset ' + esc(en.superset) + '</span>' : '') + '</div>' +
-    '<p class="target">' + en.targetSets + ' × ' + rangeTxt(en.repMin, en.repMax, en.perSide, en.timed) + ' at RIR ' + en.targetRir + (en.reentry ? ' (+1, back from a break)' : '') + ', rest ' + fmtRest(en.rest || settings.restDefault) +
+    '<h3 id="ex-h-' + i + '">' + esc(en.name) + '</h3>' + (en.superset ? '<span class="ss">Superset ' + esc(en.superset) + '</span>' + infoBtn(sc, 'superset') : '') + '</div>' +
+    infoBox(sc, 'superset', c) +
+    '<p class="target">' + en.targetSets + ' × ' + rangeTxt(en.repMin, en.repMax, en.perSide, en.timed) + ' at RIR ' + en.targetRir + infoBtn(sc, 'rir') + (en.reentry ? ' (+1, back from a break)' + infoBtn(sc, 'reentry') : '') + (en.perSide ? infoBtn(sc, 'perside') : '') + (en.timed ? infoBtn(sc, 'timed') : '') +
+      ', rest ' + fmtRest(en.rest || settings.restDefault) +
       ' <span class="ex-kcal" data-kcal>' + kcalTxt(sessionEnergy(s).rows[i].kcal) + '</span></p>' +
-    '<p class="next-target ' + ntCls + '">' + esc(nextTargetTxt(g, p)) + '</p>' +
-    '<p class="hint">' + esc(g.why) + '</p>' +
-    '<p class="e1" data-e1>' + e1Html(e1Trend(en.exId, en, s.id)) + '</p>' +
+    infoBox(sc, 'rir', c) + infoBox(sc, 'reentry', c) + infoBox(sc, 'perside', c) + infoBox(sc, 'timed', c) +
+    '<p class="next-target ' + ntCls + '">' + esc(nextTargetTxt(g, p)) + (hk ? infoBtn(sc, hk, 'this suggestion') : '') + '</p>' +
+    '<p class="hint">' + esc(g.why) + '</p>' + (hk ? infoBox(sc, hk, c) : '') +
+    '<p class="e1"><span data-e1>' + e1 + '</span>' + (e1 && !en.bwMode ? infoBtn(sc, 'e1rm') : '') + '</p>' + infoBox(sc, 'e1rm', c) +
     '<p class="last num">' + esc(lastTxt) + '</p>' +
-    (flag ? '<p class="warn-line">Consider a deload week: ' + esc(flag) + '.</p>' : '') +
-    (en.technique ? '<p class="technique">Week 4: ' + esc(en.technique) + '</p>' : '') +
-    (en.exNotes ? '<p class="ex-notes">' + esc(en.exNotes) + '</p>' : '') +
-    '<div class="sets"><div class="set-head" aria-hidden="true"><span>Set</span><span>' + U() + '</span><span>' + (en.timed ? 'Sec' : 'Reps') + '</span><span>RIR</span><span>Done</span><span></span></div>' + rows + '</div>' +
-    '<div class="ex-actions"><button type="button" class="btn small" data-act="ramp"' + (en.bodyweight && !ww ? ' disabled' : '') + '>Ramp-up</button>' +
+    (flag ? '<p class="warn-line">Consider a deload week: ' + esc(flag) + '.' + infoBtn(sc, 'deload') + '</p>' + infoBox(sc, 'deload', c) : '') +
+    (en.technique ? '<p class="technique">Week 4: ' + esc(en.technique) + (tk ? infoBtn(sc, tk) : '') + '</p>' + (tk ? infoBox(sc, tk, c) : '') + (tk ? '<div style="margin:6px 0">' + coachHtml(i, tk, c) + '</div>' : '') : '') +
+    (en.exNotes ? '<p class="ex-notes">' + esc(en.exNotes) + (nk ? infoBtn(sc, nk) : '') + '</p>' + (nk ? infoBox(sc, nk, c, '<div style="margin-top:6px">' + coachHtml(i, nk, c) + '</div>') : '') : '') +
+    (en.band ? '<p class="ex-notes">Band exercise: weight stays empty' + infoBtn(sc, 'band') + '</p>' + infoBox(sc, 'band', c) : '') +
+    bwRow +
+    '<div class="sets"><div class="set-head" aria-hidden="true"><span>Set</span><span>' + (en.bwMode ? '+' + U() : U()) + '</span><span>' + (en.timed ? 'Sec' : 'Reps') + '</span><span>RIR</span><span>Done</span><span></span></div>' + rows + '</div>' +
+    '<div class="ex-actions"><button type="button" class="btn small" data-act="ramp"' + ((en.bodyweight && !ww) || en.bwMode ? ' disabled' : '') + '>Ramp-up</button>' +
     '<button type="button" class="btn small" data-act="add-warm">+ Warm-up</button>' +
     '<button type="button" class="btn small" data-act="add-set">+ Set</button>' +
     '<button type="button" class="btn small" data-act="plates" aria-expanded="' + !!ui.platesOpen[i] + '">Plates</button>' +
@@ -1379,7 +1552,7 @@ function renderProgress() {
     }
     h2 += '<table><caption class="sr-only">Recent sessions</caption><thead><tr><th scope="col">Date</th><th scope="col">Working sets</th><th scope="col">e1RM</th></tr></thead><tbody>' +
       series.slice(-6).reverse().map(function (p) {
-        return '<tr><td>' + fmtDate(p.date) + '</td><td>' + p.sets.map(function (x) { return fmtW(x.w) + '×' + x.r; }).join(', ') + '</td><td>' + (p.e ? fmtW(roundTo(p.e, 0.5)) : '–') + '</td></tr>';
+        return '<tr><td>' + fmtDate(p.date) + '</td><td>' + p.sets.map(function (x) { return fmtSetW(x) + '×' + x.r; }).join(', ') + '</td><td>' + (p.e ? fmtW(roundTo(p.e, 0.5)) : '–') + '</td></tr>';
       }).join('') + '</tbody></table>';
   }
   h2 += '</section>';
@@ -1442,7 +1615,7 @@ function renderProgress() {
     h4 += '<details class="hist"><summary><span><strong>' + esc(s.dayName) + '</strong>' + (s.travel ? ' <span class="ss">travel</span>' : '') + ' <span class="muted">' + fmtDate(s.date) + ', week ' + s.week + '</span></span><span class="muted small">' + n + ' sets, ' + kcalTxt(sessionEnergy(s).total) + (pics.length ? ', ' + pics.length + ' photo' + (pics.length > 1 ? 's' : '') : '') + '</span></summary><ul>' +
       s.entries.filter(function (en) { return en.sets.length; }).map(function (en) {
         return '<li>' + esc(en.name) + ': ' + en.sets.map(function (x) {
-          return (x.warm ? 'W ' : '') + fmtW(x.w) + '×' + (x.r == null ? '–' : x.r) + (x.rir != null ? ' @' + x.rir : '');
+          return (x.warm ? 'W ' : '') + fmtSetW(x) + '×' + (x.r == null ? '–' : x.r) + (x.rir != null ? ' @' + x.rir : '');
         }).join(', ') + (en.note ? ' <em>(' + esc(en.note) + ')</em>' : '') + '</li>';
       }).join('') + '</ul>' +
       (pics.length ? '<div class="hist-photos">' + pics.map(function (en) { return '<img class="thumb" data-photo-lazy="' + esc(photoId(s.id, en.exId)) + '" alt="' + esc(en.name) + '">'; }).join('') + '</div>' : '') +
@@ -1560,9 +1733,9 @@ function renderSettings() {
     '<p class="muted small">Load added when every working set hits the top of the rep range (see the progression notes at the top of the file).</p>' +
     '<div class="grid2"><label class="field"><span>Upper days (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="' + (lb ? 'incUpperLb' : 'incUpper') + '" value="' + (lb ? settings.incUpperLb : settings.incUpper) + '"></label>' +
     '<label class="field"><span>Lower days (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="' + (lb ? 'incLowerLb' : 'incLower') + '" value="' + (lb ? settings.incLowerLb : settings.incLower) + '"></label></div></section>' +
-    '<section class="card" aria-labelledby="st-kcal"><h3 id="st-kcal">Calories burned</h3>' +
+    '<section class="card" aria-labelledby="st-kcal"><h3 id="st-kcal">Body</h3>' +
     '<label class="field"><span>Body weight (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="bodyWeight" value="' + fmtW(Number(settings.bodyWeight) || null) + '"></label>' +
-    '<p class="muted small" style="margin:0">Used to estimate calories burned in each workout. Update it when your weight changes; finished workouts keep the weight they were logged with.</p></section>' +
+    '<p class="muted small" style="margin:0">Your bodyweight (BW). It is shown on bodyweight exercises and used to estimate calories burned. BW sets are logged as BW, not as kilos, so changing this never alters your history. Update it as your weight changes.</p></section>' +
     '<section class="card" aria-labelledby="st-rest"><h3 id="st-rest">Rest timer</h3>' +
     '<label class="field"><span>Default rest</span><select data-setting="restDefault">' + restOpts.map(function (s) { return '<option value="' + s + '"' + (s === Number(settings.restDefault) ? ' selected' : '') + '>' + fmtRest(s) + '</option>'; }).join('') + '</select></label>' +
     '<label class="check-field"><input type="checkbox" data-setting="useProgramRest"' + (settings.useProgramRest ? ' checked' : '') + '> Use each exercise\'s rest from the program</label>' +
@@ -1676,10 +1849,10 @@ function beep() {
     if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
   } catch (e) { /* sound is optional */ }
 }
-function startTimer(sec) {
+function startTimer(sec, label) {
   unlockAudio();
   timer.total = sec; timer.end = Date.now() + sec * 1000; timer.running = true; timer.hideAt = 0;
-  tEl.classList.add('on'); tEl.classList.remove('finished'); tLabel.textContent = 'Resting';
+  tEl.classList.add('on'); tEl.classList.remove('finished'); tLabel.textContent = label || 'Resting';
   document.body.classList.add('timer-on'); tick();
 }
 function stopTimer() { timer.running = false; timer.hideAt = 0; tEl.classList.remove('on', 'finished'); document.body.classList.remove('timer-on'); }
@@ -1722,6 +1895,7 @@ document.querySelector('.tabbar').addEventListener('click', function (e) {
   render(); window.scrollTo(0, 0);
 });
 $('#unit-btn').addEventListener('click', function () { setUnit(U() === 'kg' ? 'lb' : 'kg'); });
+$('#guide-btn').addEventListener('click', function () { flush(); ui.tab = 'guide'; ui.guideKey = null; render(); window.scrollTo(0, 0); });
 function setUnit(u) {
   flush(); settings.unit = u; ui.plateUnit = null; saveSettings(); render(); toast('Units: ' + u);
 }
@@ -1758,6 +1932,7 @@ view.addEventListener('click', function (e) {
       if (!st.done) {
         var p = prevFor(s, en, si);
         if (p) { if (st.w == null && p.w != null) st.w = p.w; if (st.r == null && p.r != null) st.r = p.r; }
+        if (en.bwMode != null) st.bw = !!en.bwMode;
         st.done = true;
         pk = prKind(st, bests(en.exId, s.id));
         var nextEn = s.entries[ei + 1];
@@ -1776,18 +1951,45 @@ view.addEventListener('click', function (e) {
       }
       break;
     }
+    case 'info': {
+      var ik = b.dataset.scope + '|' + b.dataset.key;
+      ui.info[ik] = !ui.info[ik];
+      var sel = '[data-act="info"][data-scope="' + b.dataset.scope + '"][data-key="' + b.dataset.key + '"]';
+      if (b.dataset.scope.charAt(0) === 'e' && en) { var fr = refreshEntry(ei); var fb = fr && fr.querySelector(sel); if (fb) fb.focus({ preventScroll: true }); }
+      else { render(); focusSel(sel); }
+      break;
+    }
+    case 'guide': flush(); ui.tab = 'guide'; ui.guideKey = b.dataset.key; render(); break;
+    case 'coach-start': ui.coach = { ei: ei, key: b.dataset.key, step: 0 }; refreshEntry(ei, null, 'coach-next'); break;
+    case 'coach-next': {
+      if (!ui.coach || !en) return;
+      var cst = GUIDE[ui.coach.key].steps(entryCtx(s, en, ei, null));
+      ui.coach.step = Math.min(ui.coach.step + 1, cst.length - 1);
+      var cur = cst[ui.coach.step];
+      if (cur.rest) startTimer(cur.rest, GUIDE[ui.coach.key].t + ': rest ' + cur.rest + ' s');
+      refreshEntry(ei, null, cur.end ? 'coach-stop' : 'coach-next');
+      break;
+    }
+    case 'coach-stop': ui.coach = null; refreshEntry(ei); break;
+    case 'bw-mode': {
+      if (!en) return;
+      en.bwMode = b.dataset.v === '1';
+      en.sets.forEach(function (x) { x.bw = en.bwMode; });
+      saveSessionsSoon(); refreshEntry(ei); focusSel('.ex[data-ei="' + ei + '"] [data-act="bw-mode"][data-v="' + b.dataset.v + '"]');
+      break;
+    }
     case 'del-set':
       if (!en) return; en.sets.splice(si, 1); saveSessionsSoon(); refreshEntry(ei); break;
     case 'add-set': {
       if (!en) return;
       var work = en.sets.filter(function (x) { return !x.warm; });
-      en.sets.push({ w: work.length ? work[work.length - 1].w : null, r: null, rir: null, warm: false, done: false });
+      en.sets.push({ w: work.length ? work[work.length - 1].w : null, r: null, rir: null, warm: false, done: false, bw: !!en.bwMode });
       saveSessionsSoon(); refreshEntry(ei, en.sets.length - 1, 'add-set'); break;
     }
     case 'add-warm': {
       if (!en) return;
       var at = 0; while (at < en.sets.length && en.sets[at].warm) at++;
-      en.sets.splice(at, 0, { w: null, r: null, rir: null, warm: true, done: false });
+      en.sets.splice(at, 0, { w: null, r: null, rir: null, warm: true, done: false, bw: !!en.bwMode });
       saveSessionsSoon(); refreshEntry(ei, at, 'add-warm'); break;
     }
     case 'ramp': {
@@ -1797,6 +1999,7 @@ view.addEventListener('click', function (e) {
       var ramp = rampSets(wk);
       if (!ramp.length) { toast('Working weight too light for ramp-up sets'); return; }
       var at2 = 0; while (at2 < en.sets.length && en.sets[at2].warm) at2++;
+      ramp.forEach(function (x) { x.bw = !!en.bwMode; });
       Array.prototype.splice.apply(en.sets, [at2, 0].concat(ramp));
       saveSessionsSoon(); refreshEntry(ei, at2, 'toggle-warm');
       toast(ramp.length + ' warm-up sets added: ' + ramp.map(function (x) { return fmtW(x.w) + '×' + x.r; }).join(', '));
@@ -1815,7 +2018,7 @@ view.addEventListener('click', function (e) {
       if (!logged && !confirm('No working sets have reps logged. Finish anyway?')) return;
       s.entries.forEach(function (x) { x.sets = x.sets.filter(function (y) { return y.w != null || y.r != null; }); });
       s.completedAt = Date.now(); saveSessions();
-      ui.justCompleted = s.id; ui.selectedDay = null; ui.volWeek = null; ui.platesOpen = {}; ui.photoBig = {};
+      ui.justCompleted = s.id; ui.selectedDay = null; ui.volWeek = null; ui.platesOpen = {}; ui.photoBig = {}; ui.info = {}; ui.coach = null;
       stopTimer(); render(); window.scrollTo(0, 0); toast('Session saved');
       break;
     }
