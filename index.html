@@ -76,6 +76,9 @@ body.timer-on{padding-bottom:calc(136px + env(safe-area-inset-bottom,0px))}
 .weekpill{font-family:var(--font-display);font-size:1rem;color:var(--muted);white-space:nowrap}
 .weekpill b{color:var(--yellow);font-weight:700}
 .unit-btn{min-height:44px;min-width:56px;border-radius:var(--radius-s);border:1px solid var(--line);background:var(--surface-2);font-family:var(--font-display);font-weight:700;font-size:1.05rem}
+.top-right{min-width:0}
+.weekpill{white-space:normal;text-align:right;line-height:1.15}
+@media (max-width:440px){ .brand{font-size:1.1rem} .weekpill{font-size:.88rem} .top-right{gap:6px} .unit-btn{min-width:44px;padding:0 8px} .topbar{padding-left:12px;padding-right:8px} }
 
 main{max-width:760px;margin:0 auto;padding:16px}
 h2{font-family:var(--font-display);font-size:1.7rem;line-height:1.1;margin:4px 0 10px}
@@ -184,6 +187,11 @@ details.tools[open]>summary::after{content:"−"}
 .technique,.warn-line{margin:6px 0 0;font-size:.9rem;color:var(--red)}
 .warn-line{font-weight:600}
 .ex-notes{margin:6px 0 0;font-size:.88rem;color:var(--muted)}
+.note-hl{color:var(--yellow);font-weight:700}
+.note-last{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 0;padding:8px 10px;border-radius:var(--radius-s);background:var(--surface-2);border-left:3px solid var(--yellow)}
+.note-last .note-hl{flex:1 1 160px}
+.note-input{color:var(--yellow)!important;font-weight:700}
+textarea.note-input{font-weight:700}
 .sets{margin-top:12px}
 .set-head,.set-row{display:grid;grid-template-columns:46px minmax(0,1fr) minmax(0,1fr) minmax(0,.8fr) 50px 34px;gap:6px;align-items:center}
 .set-head{font-size:.78rem;color:var(--muted);padding-bottom:4px;text-align:center}
@@ -281,6 +289,25 @@ details.hist ul{margin:4px 0 10px;padding-left:18px;font-size:.9rem;color:var(--
 .guide-chips button{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:.9rem;font-weight:600}
 .guide-item{scroll-margin-top:72px}
 .guide-item.hl{box-shadow:0 0 0 2px var(--yellow)}
+
+/* Body weight, session editor */
+.weigh{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.weigh .field{flex:1 1 120px;margin:0}
+.bw-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.bw-stats .stat b{font-size:1.4rem}
+.wlist{list-style:none;margin:0;padding:0}
+.wlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.ed-ex{border-top:1px solid var(--line);padding:12px 0}
+.ed-ex h4{margin:0 0 8px;font-family:var(--font-display);font-size:1.1rem}
+.ed-head,.ed-row{display:grid;grid-template-columns:46px minmax(0,1fr) minmax(0,1fr) minmax(0,.8fr) 34px;gap:6px;align-items:center}
+.ed-head{font-size:.78rem;color:var(--muted);text-align:center;padding-bottom:4px}
+.ed-row{margin-bottom:6px}
+.ed-row input{text-align:center;font-variant-numeric:tabular-nums;font-size:1.05rem;padding:0 4px}
+.ed-row.warm .set-type{background:transparent;color:var(--blue);border-color:var(--blue)}
+.ed-bar{position:sticky;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;background:var(--bg);padding:10px 0;border-top:1px solid var(--line)}
+.ed-bar .btn{flex:1}
+.repl-only{display:none}
+#ex-form.replace .repl-only{display:flex}
 
 /* Bottom tabs */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -380,6 +407,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
       <label class="field"><span>Superset tag (e.g. 7a)</span><input name="superset" maxlength="6"></label>
     </div>
     <label class="field"><span>Week 4 technique</span><input name="technique" maxlength="80"></label>
+    <label class="check-field repl-only"><input type="checkbox" name="keepHistory"> Same movement, small variation: keep its history and suggested loads</label>
     <label class="check-field"><input type="checkbox" name="perSide"> Reps are per arm / per leg</label>
     <label class="check-field"><input type="checkbox" name="bodyweight"> Bodyweight exercise (weight = added load)</label>
     <label class="check-field"><input type="checkbox" name="band"> Resistance band (log the band in the note, not as weight)</label>
@@ -420,7 +448,7 @@ legend{font-size:.88rem;color:var(--muted);margin-bottom:4px;padding:0}
 
 /* ================= Constants ================= */
 var NS = 'ut_tracker_v1_';
-var K = { program: NS + 'program', sessions: NS + 'sessions', settings: NS + 'settings', templates: NS + 'templates', meta: NS + 'meta' };
+var K = { program: NS + 'program', sessions: NS + 'sessions', settings: NS + 'settings', templates: NS + 'templates', meta: NS + 'meta', bodylog: NS + 'bodylog' };
 var SCHEMA = 5;
 var MUSCLES = ['Chest','Back','Side delts','Rear delts','Front delts','Biceps','Triceps','Quads','Hamstrings','Glutes','Adductors','Calves','Abs'];
 var WEEK_NAMES = { 1: 'Calibration', 2: 'Build', 3: 'Build + volume', 4: 'Push', 5: 'Deload' };
@@ -576,7 +604,8 @@ function defaultGymProgram() {
 function defaultSettings() {
   return { programStart: isoDate(), weekMode: 'auto', manualWeek: 1, restDefault: 90, useProgramRest: true,
     incUpper: 2.5, incLower: 5, incUpperLb: 5, incLowerLb: 10, unit: 'kg', sound: true, bodyWeight: 55,
-    travel: null, rotationResetAt: 0, reentrySince: 0 };
+    travel: null, rotationResetAt: 0, reentrySince: 0, deloadChoices: {},
+    goalWeight: null, lastBackupAt: 0, backupSnoozeUntil: 0 };
 }
 function normalizeEx(e) {
   var o = Object.assign({ type: 'A', name: 'Exercise', muscle: 'Chest', sets: 3, repMin: 8, repMax: 12, rirWeeks: [2,2,1,1], rest: 90,
@@ -615,12 +644,16 @@ var templates = load(K.templates, []);
 if (!Array.isArray(templates)) templates = [];
 
 var ui = { tab: 'today', selectedDay: null, progressEx: null, volWeek: null, justCompleted: null, chart: null,
-  toolsOpen: false, plateW: '', plateUnit: null, rpe: '', rir: '', platesOpen: {}, photoBig: {}, photoFor: null, info: {}, coach: null, guideKey: null };
+  toolsOpen: false, editDraft: null, reweigh: false, plateW: '', plateUnit: null, rpe: '', rir: '', platesOpen: {}, photoBig: {}, photoFor: null, info: {}, coach: null, guideKey: null };
 
 function saveProgram() { save(K.program, program); }
 function saveSessions() { save(K.sessions, sessions); }
 function saveSettings() { save(K.settings, settings); }
 function saveTemplates() { save(K.templates, templates); }
+var bodylog = load(K.bodylog, []);
+if (!Array.isArray(bodylog)) bodylog = [];
+bodylog = bodylog.filter(function (x) { return x && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && Number(x.kg) > 0; });
+function saveBodylog() { save(K.bodylog, bodylog); }
 var saveT = null;
 function saveSessionsSoon() { clearTimeout(saveT); saveT = setTimeout(function () { saveT = null; saveSessions(); }, 250); }
 function flush() { if (saveT) { clearTimeout(saveT); saveT = null; saveSessions(); } }
@@ -660,10 +693,40 @@ function migrate(force, fromSchema) {
 }
 
 /* ================= Domain logic ================= */
+/* Deload is never automatic: from the 5th week of a block the app asks each week.
+   Until the user answers (or if they choose to continue) the week-4 targets stay in use. */
+function blockIndex(dateISO) { return Math.max(0, Math.floor(daysBetween(settings.programStart, dateISO || isoDate()) / 7)); }
+function deloadKey(idx) { return settings.programStart + '|' + idx; }
+function deloadChoice(idx) { return (settings.deloadChoices || {})[deloadKey(idx)] || null; }
+function setDeloadChoice(idx, choice) {
+  if (!settings.deloadChoices || typeof settings.deloadChoices !== 'object') settings.deloadChoices = {};
+  if (choice) settings.deloadChoices[deloadKey(idx)] = choice; else delete settings.deloadChoices[deloadKey(idx)];
+  saveSettings();
+}
 function weekAt(dateISO) {
   if (settings.weekMode === 'manual') return clamp(Number(settings.manualWeek) || 1, 1, 5);
-  var days = daysBetween(settings.programStart, dateISO);
-  return clamp(Math.floor(days / 7) + 1, 1, 5);
+  var idx = blockIndex(dateISO);
+  if (idx < 4) return idx + 1;
+  return deloadChoice(idx) === 'deload' ? 5 : 4;
+}
+function extendedBlock() { return settings.weekMode !== 'manual' && !travelOn() && blockIndex() >= 4 && deloadChoice(blockIndex()) !== 'deload'; }
+function deloadPrompt() {
+  if (settings.weekMode === 'manual' || settings.travel) return '';
+  var idx = blockIndex();
+  if (idx < 4) return '';
+  var ch = deloadChoice(idx), afterDeload = deloadChoice(idx - 1) === 'deload';
+  var newBlock = '<button type="button" class="btn small' + (afterDeload ? ' primary' : '') + '" data-act="deload-newblock">Start a new block (week 1)</button>';
+  if (ch === 'deload') return '<div class="callout">Deload week chosen: half the sets, about 10% lighter, RIR 4.' + infoBtn('g', 'deload') + infoBox('g', 'deload') +
+    '<div class="chips" style="margin-top:8px"><button type="button" class="btn small" data-act="deload-change">Change my mind</button></div></div>';
+  if (ch === 'continue') return '<div class="callout">Deload skipped this week: you keep progressing with the week 4 targets. The app will ask again next week.' +
+    '<div class="chips" style="margin-top:8px"><button type="button" class="btn small" data-act="deload-change">Change my mind</button>' + newBlock + '</div></div>';
+  var q = afterDeload ? '<strong>Your deload week is over.</strong> Start a new block, or keep going?'
+    : '<strong>Week ' + (idx + 1) + ' of your block: the program plans a deload week now.</strong> Deload, or keep progressing?';
+  return '<div class="callout" role="region" aria-label="Deload decision">' + q + infoBtn('g', 'deload') + infoBox('g', 'deload') +
+    '<p class="small muted" style="margin:6px 0 0">Deload if lifts feel heavy, you sleep badly or your joints ache. Keep going if you are still adding reps or weight. Until you choose, workouts use the week 4 targets.</p>' +
+    '<div class="chips" style="margin-top:8px">' + (afterDeload ? newBlock : '') +
+    '<button type="button" class="btn small' + (afterDeload ? '' : ' primary') + '" data-act="deload-yes">Deload this week</button>' +
+    '<button type="button" class="btn small" data-act="deload-no">Keep progressing</button></div></div>';
 }
 function travelOn() { return !!(settings.travel && isoDate() >= settings.travel.from); }
 function travelScheduled() { return !!(settings.travel && isoDate() < settings.travel.from); }
@@ -712,10 +775,20 @@ function lastEntries(exId, n, excludeId) {
   var out = [], comp = completedSessions();
   for (var i = comp.length - 1; i >= 0 && out.length < n; i--) {
     if (comp[i].id === excludeId) continue;
+    if (comp[i].week >= 5 && !comp[i].travel) continue; // deload sessions never drive progression, trends or 'Last'
     var en = comp[i].entries.find(function (e) { return e.exId === exId; });
     if (en && en.sets.some(isWork)) out.push({ entry: en, session: comp[i] });
   }
   return out;
+}
+function lastNote(exId, excludeId) {
+  var comp = completedSessions();
+  for (var i = comp.length - 1; i >= 0; i--) {
+    if (comp[i].id === excludeId) continue;
+    var en = comp[i].entries.find(function (e) { return e.exId === exId && e.note && String(e.note).trim(); });
+    if (en) return { note: String(en.note).trim(), date: comp[i].date };
+  }
+  return null;
 }
 function lastEntry(exId, excludeId) { return lastEntries(exId, 1, excludeId)[0] || null; }
 function topW(entry) { return maxOf(entry.sets.filter(isWork).map(function (x) { return x.w || 0; })); }
@@ -1023,6 +1096,44 @@ function sessionEnergy(s) {
 }
 function kcalTxt(v) { return '≈ ' + Math.round(v) + ' kcal'; }
 
+/* ================= Body weight log =================
+   One weigh-in per day, stored in kg. The 7-day average feeds settings.bodyWeight
+   (used for BW labels and calories); weekly averages drive the trend. */
+function weighIn(dateISO, kg) {
+  bodylog = bodylog.filter(function (x) { return x.date !== dateISO; });
+  bodylog.push({ date: dateISO, kg: Math.round(kg * 100) / 100 });
+  bodylog.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  saveBodylog(); syncBodyWeight();
+}
+function syncBodyWeight() {
+  var a = avg7(); if (a) { settings.bodyWeight = Math.round(a * 10) / 10; saveSettings(); }
+}
+function avg7(endISO) {
+  if (!bodylog.length) return null;
+  var end = endISO || bodylog[bodylog.length - 1].date, from = addDaysISO(end, -6);
+  var xs = bodylog.filter(function (x) { return x.date >= from && x.date <= end; });
+  return xs.length ? xs.reduce(function (t, x) { return t + x.kg; }, 0) / xs.length : null;
+}
+function weeklyBw() {
+  var m = {};
+  bodylog.forEach(function (x) { var k = weekStartISO(x.date); (m[k] = m[k] || []).push(x.kg); });
+  return Object.keys(m).sort().map(function (k) { var v = m[k]; return { week: k, t: parseISO(k).getTime(), avg: v.reduce(function (a, b) { return a + b; }, 0) / v.length, n: v.length }; });
+}
+function bwTrend() {
+  var w = weeklyBw(); if (w.length < 2) return null;
+  var last = w[w.length - 1], base = null;
+  for (var i = w.length - 2; i >= 0; i--) { base = w[i]; if (daysBetween(w[i].week, last.week) >= 28) break; }
+  var weeks = Math.max(1, daysBetween(base.week, last.week) / 7);
+  return { diff: last.avg - base.avg, weeks: weeks, perWeek: (last.avg - base.avg) / weeks };
+}
+function fmtBw(kg, sign) { var v = toD(kg); return (sign && v > 0 ? '+' : '') + fmtNum(v, 1) + ' ' + U(); }
+function backupDue() {
+  if (!completedSessions().length) return false;
+  var now = Date.now();
+  if (settings.backupSnoozeUntil && now < settings.backupSnoozeUntil) return false;
+  return !settings.lastBackupAt || now - settings.lastBackupAt > 7 * 864e5;
+}
+
 /* ================= Session actions ================= */
 function startSession(day) {
   if (!day || !day.exercises.length) return;
@@ -1081,7 +1192,7 @@ var view = $('#view');
 function render() {
   document.querySelectorAll('.tabbar [role=tab]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === ui.tab)); });
   var w = currentWeek();
-  $('#weekpill').innerHTML = travelOn() ? 'Travel, wk <b>' + w + '</b> paused' : 'Wk <b>' + w + '</b> ' + esc(WEEK_NAMES[w]);
+  $('#weekpill').innerHTML = travelOn() ? 'Travel, wk <b>' + w + '</b> paused' : extendedBlock() ? 'Wk <b>' + (blockIndex() + 1) + '</b> ' + (deloadChoice(blockIndex()) === 'continue' ? 'Push (no deload)' : 'Deload?') : 'Wk <b>' + w + '</b> ' + esc(WEEK_NAMES[w]);
   var ub = $('#unit-btn');
   ub.textContent = U();
   ub.setAttribute('aria-label', 'Units: ' + U() + '. Tap to switch to ' + (U() === 'kg' ? 'lb' : 'kg'));
@@ -1188,6 +1299,23 @@ function renderIdle() {
   } else {
     h += '<div class="empty"><h3>No sessions logged yet</h3><p class="muted">Pick a day and press Start. Week 1 is for finding your loads and practising RIR, so leave a few reps in the tank.</p></div>';
   }
+  if (backupDue()) {
+    var bd = settings.lastBackupAt ? Math.floor((Date.now() - settings.lastBackupAt) / 864e5) : null;
+    h += '<div class="callout warn"><strong>' + (bd == null ? 'No backup yet.' : 'Last backup ' + bd + ' days ago.') + '</strong> Your workouts live only in this browser, and phones (especially iPhone) can clear them. Save a copy somewhere safe.' +
+      '<div class="chips" style="margin-top:8px"><button type="button" class="btn small primary" data-act="export">Export backup now</button><button type="button" class="btn small" data-act="backup-later">Remind me in 3 days</button></div></div>';
+  }
+  var today = isoDate(), wToday = bodylog.find(function (x) { return x.date === today; }), a7 = avg7();
+  h += '<section class="card" aria-labelledby="wi-h"><h3 id="wi-h">Morning weigh-in</h3>';
+  if (wToday && !ui.reweigh) {
+    h += '<p style="margin:6px 0 0" class="num">Today <strong>' + fmtBw(wToday.kg) + '</strong>' + (a7 ? ', 7-day average <strong>' + fmtBw(a7) + '</strong>' : '') +
+      ' <button type="button" class="btn small ghost" data-act="reweigh">Change</button></p>';
+  } else {
+    h += '<p class="muted small" style="margin:4px 0 8px">After waking, before eating. Daily numbers jump around: the weekly average is what counts.</p>' +
+      '<div class="weigh"><label class="field"><span>Weight (' + U() + ')</span><input type="text" inputmode="decimal" id="weigh-val" value="' + (wToday ? fmtNum(toD(wToday.kg), 1) : '') + '" placeholder="' + (bodylog.length ? fmtNum(toD(bodylog[bodylog.length - 1].kg), 1) : '') + '"></label>' +
+      '<button type="button" class="btn primary" data-act="weigh-save">Save</button></div>';
+  }
+  h += '</section>';
+  h += deloadPrompt();
   h += travelBanner();
   h += '<h2>' + (away ? 'Pick a travel workout' : 'Pick a day') + '</h2><div class="day-grid" role="group" aria-label="Training days">';
   list.forEach(function (d) {
@@ -1231,7 +1359,7 @@ function renderActive(s) {
   if (s.week >= 5 && !s.travel) h += '<div class="callout">Deload week: half the sets, about 10% lighter, RIR 4. No techniques.' + infoBtn('g', 'deload') + infoBox('g', 'deload') + '</div>';
   h += '<div class="pr-legend"><i></i>Red set number = new personal record' + infoBtn('g', 'pr') + '</div>' + infoBox('g', 'pr');
   h += s.entries.map(function (en, i) { return renderEntry(s, en, i); }).join('');
-  h += '<label class="field"><span>Session notes</span><textarea data-f="snote" placeholder="Sleep, energy, anything that felt off">' + esc(s.notes) + '</textarea></label>';
+  h += '<label class="field"><span>Session notes</span><textarea class="note-input" data-f="snote" placeholder="Sleep, energy, anything that felt off">' + esc(s.notes) + '</textarea></label>';
   h += '<div class="stack"><button type="button" class="btn primary block" data-act="complete">Finish session</button>' +
     '<button type="button" class="btn block" data-act="save-tpl-session">Save this workout as a template</button>' +
     '<button type="button" class="btn danger block" data-act="discard">Discard session</button></div></section>';
@@ -1301,6 +1429,8 @@ var GUIDE = {
     ex: function (c) { return c.wTxt + ' × ' + c.repMax + ' → about ' + fmtW(roundTo(e1rm(c.w, c.repMax), 0.5)) + ' ' + U() + '.'; } },
   pr: { t: 'Personal record (red set)', what: 'A working set better than any before: heavier (heaviest set), or more reps at a weight (best e1RM). The set number turns red.',
     ex: function (c) { return 'your best was ' + c.wTxt + ' × ' + c.repMax + '. Today ' + c.wTxt + ' × ' + (c.repMax + 1) + ' → new best e1RM, even with the same weight.'; } },
+  weighin: { t: 'Weekly average weight', what: 'Weigh yourself in the morning, after the bathroom and before eating. Day to day the scale moves up to 1–2 kg with water and food, so the app uses averages: the 7-day average becomes your BW, and the weekly averages show the trend.',
+    ex: function () { return 'Mon 55.2, Wed 55.9, Fri 55.4 → week average 55.5 kg. If the next weeks read 55.6, 55.8, 56.0 you are gaining about 0.5 kg a month.'; } },
   bw: { t: 'Bodyweight (BW)', what: 'Your body is the load. With "Bodyweight" selected on the card, leave the weight empty; type a number only if you add load (a backpack, a dumbbell). BW sets progress by reps and are not counted in e1RM or records.',
     ex: function () { return 'BW = ' + (settings.bodyWeight ? wl(Number(settings.bodyWeight)) : 'your weight') + ' (Settings → Body). Push-ups: leave it empty → logged as BW. Chin-ups with a 5 kg backpack: type 5 → BW + 5 kg.'; } },
   band: { t: 'Resistance bands', what: 'Bands are not logged as weight. Leave the weight empty and write the band in the note. At the top of the range: stronger band, two bands, or step further from the anchor.',
@@ -1310,7 +1440,7 @@ var GUIDE_GROUPS = [
   ['Effort', ['rir', 'perside', 'timed']],
   ['What the hints mean', ['hint-new', 'hint-up', 'hint-hold', 'hint-hard', 'hint-below', 'hint-down', 'reentry', 'deload']],
   ['Techniques', ['technique', 'restpause', 'stripping', 'twentyones', 'superset', 'rampup']],
-  ['Numbers', ['e1rm', 'pr']],
+  ['Numbers', ['e1rm', 'pr', 'weighin']],
   ['Load', ['bw', 'band']]
 ];
 function hintKey(g) {
@@ -1375,7 +1505,8 @@ function renderEntry(s, en, i) {
   var p = planFromEntry(en, s), g = progression(p, en.region, s.id);
   var lastTxt = last ? 'Last (' + fmtDate(last.session.date) + '): ' +
     last.entry.sets.filter(isWork).map(function (x) { return (x.bw ? fmtSetW(x) + '×' : x.w ? fmtW(x.w) + '×' : '') + x.r + (en.timed ? ' s' : '') + (x.rir != null ? '@' + x.rir : ''); }).join(', ') +
-    (last.entry.note ? ' (note: ' + last.entry.note + ')' : '') : 'No previous session';
+    '' : 'No previous session';
+  var ln = lastNote(en.exId, s.id);
   var flag = s.week < 5 ? deloadFlag(en.exId, s.id) : null;
   var wn = 0, rows = en.sets.map(function (st, si) {
     var pv = prevFor(s, en, si);
@@ -1412,6 +1543,8 @@ function renderEntry(s, en, i) {
     '<p class="hint">' + esc(g.why) + '</p>' + (hk ? infoBox(sc, hk, c) : '') +
     '<p class="e1"><span data-e1>' + e1 + '</span>' + (e1 && !en.bwMode ? infoBtn(sc, 'e1rm') : '') + '</p>' + infoBox(sc, 'e1rm', c) +
     '<p class="last num">' + esc(lastTxt) + '</p>' +
+    (ln ? '<div class="note-last"><span class="muted small">Note from ' + fmtDate(ln.date) + ':</span><span class="note-hl">' + esc(ln.note) + '</span>' +
+      (!(en.note && String(en.note).trim()) ? '<button type="button" class="btn small" data-act="copy-note">Use again</button>' : '') + '</div>' : '') +
     (flag ? '<p class="warn-line">Consider a deload week: ' + esc(flag) + '.' + infoBtn(sc, 'deload') + '</p>' + infoBox(sc, 'deload', c) : '') +
     (en.technique ? '<p class="technique">Week 4: ' + esc(en.technique) + (tk ? infoBtn(sc, tk) : '') + '</p>' + (tk ? infoBox(sc, tk, c) : '') + (tk ? '<div style="margin:6px 0">' + coachHtml(i, tk, c) + '</div>' : '') : '') +
     (en.exNotes ? '<p class="ex-notes">' + esc(en.exNotes) + (nk ? infoBtn(sc, nk) : '') + '</p>' + (nk ? infoBox(sc, nk, c, '<div style="margin-top:6px">' + coachHtml(i, nk, c) + '</div>') : '') : '') +
@@ -1424,7 +1557,7 @@ function renderEntry(s, en, i) {
     '<button type="button" class="btn small" data-act="plates" aria-expanded="' + !!ui.platesOpen[i] + '">Plates</button>' +
     '<button type="button" class="btn small" data-act="photo-add">' + (en.photo ? 'New photo' : 'Photo') + '</button>' +
     '<span></span></div>' + plates + photo +
-    '<label class="field" style="margin:0"><span>Note for this exercise</span><input type="text" data-f="exnote" value="' + esc(en.note) + '" placeholder="' + (en.band ? 'Band used, e.g. red band, 2 steps from door' : 'Seat 4, felt knee, etc.') + '"></label>' +
+    '<label class="field" style="margin:8px 0 0"><span>Note for this exercise</span><input type="text" class="note-input" data-f="exnote" maxlength="200" value="' + esc(en.note) + '" placeholder="' + (en.band ? 'Band used, e.g. red band, 2 steps from door' : 'Seat 4, felt knee, etc.') + '"></label>' +
     '</article>';
 }
 function updateKcal(s) {
@@ -1469,6 +1602,7 @@ function renderProgram() {
         '<div class="prog-btns">' +
         '<button type="button" class="icon" data-act="move" data-dir="-1" data-day="' + esc(d.id) + '" data-i="' + i + '" aria-label="Move ' + esc(e.name) + ' up"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
         '<button type="button" class="icon" data-act="move" data-dir="1" data-day="' + esc(d.id) + '" data-i="' + i + '" aria-label="Move ' + esc(e.name) + ' down"' + (i === d.exercises.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button type="button" class="icon" data-act="replace-ex" data-day="' + esc(d.id) + '" data-ex="' + esc(e.id) + '" aria-label="Replace ' + esc(e.name) + ' with another exercise" title="Replace">⇄</button>' +
         '<button type="button" class="btn small" data-act="edit-ex" data-day="' + esc(d.id) + '" data-ex="' + esc(e.id) + '" aria-label="Edit ' + esc(e.name) + '">Edit</button>' +
         '</div></li>';
     });
@@ -1504,15 +1638,58 @@ function exSeries(exId) {
   });
   return out;
 }
+function renderBodyCard() {
+  var h = '<section class="card" aria-labelledby="bwc-h"><h3 id="bwc-h">Body weight</h3>';
+  if (!bodylog.length) return h + '<p class="muted" style="margin:6px 0 0">No weigh-ins yet. Log one on the Today tab each morning to see your weekly trend here.</p></section>';
+  var wk = weeklyBw(), tr = bwTrend(), a7 = avg7(), goal = Number(settings.goalWeight) || null;
+  h += '<div class="bw-stats"><div class="stat"><b>' + fmtNum(toD(a7), 1) + '</b><span>7-day avg (' + U() + ')</span></div>' +
+    '<div class="stat"><b>' + (tr ? fmtBw(tr.diff, true).replace(' ' + U(), '') : '–') + '</b><span>' + (tr ? 'in ' + Math.round(tr.weeks) + ' wk (' + U() + ')' : 'change: needs 2 weeks') + '</span></div>' +
+    '<div class="stat"><b>' + (goal ? fmtNum(toD(goal - a7), 1) : '–') + '</b><span>' + (goal ? 'to goal ' + fmtBw(goal) : 'set a goal in Settings') + '</span></div></div>';
+  if (tr) {
+    var pm = tr.perWeek * 4.35;
+    h += '<p class="small" style="margin:0 0 8px">About <strong>' + fmtBw(pm, true) + ' per month</strong>. ' +
+      (pm > 0.75 ? 'Faster than the 0.25–0.5 kg a month your plan aims for: part of it may be fat. Worth checking with your dietitian.' : pm >= 0.2 ? 'A steady pace for gaining mostly muscle.' : pm > -0.2 ? 'Flat: if gaining is the aim, this is the signal to eat a bit more (with your dietitian).' : 'Going down.') + '</p>';
+  }
+  if (wk.length >= 2) h += '<canvas id="bw-chart" role="img" aria-label="Weekly average body weight from ' + fmtBw(wk[0].avg) + ' to ' + fmtBw(wk[wk.length - 1].avg) + '"></canvas>' +
+    '<div class="legend"><span>Weekly average</span>' + (goal ? '<span class="e1l">Goal</span>' : '') + '</div>';
+  else h += '<p class="muted small">The chart appears after two weeks of weigh-ins.</p>';
+  h += '<details class="hist"><summary>All weigh-ins (' + bodylog.length + ')</summary><ul class="wlist">' + bodylog.slice().reverse().slice(0, 60).map(function (x) {
+    return '<li><span>' + fmtDate(x.date) + '</span><span>' + fmtBw(x.kg) + '</span><button type="button" class="btn small ghost" data-act="weigh-del" data-date="' + x.date + '" aria-label="Delete weigh-in of ' + fmtDate(x.date) + '">Delete</button></li>';
+  }).join('') + '</ul></details></section>';
+  ui.chart = ui.chart || {}; ui.chart.bw = wk;
+  return h;
+}
+function renderSessionEdit() {
+  var s = ui.editDraft;
+  var h = '<h2>Edit session</h2><p class="muted">' + esc(s.dayName) + '. Change any number, then Save. Rows without reps are removed. Your progression, records and charts update from the corrected data.</p>' +
+    '<label class="field"><span>Date</span><input type="date" data-ed="date" value="' + esc(s.date) + '"></label>';
+  s.entries.forEach(function (en, ei) {
+    var wn = 0;
+    h += '<div class="ed-ex"><h4>' + esc(en.name) + '</h4><div class="ed-head" aria-hidden="true"><span>Set</span><span>' + (en.bwMode ? '+' : '') + U() + '</span><span>' + (en.timed ? 'Sec' : 'Reps') + '</span><span>RIR</span><span></span></div>' +
+      en.sets.map(function (x, si) {
+        var lab = x.warm ? 'W' : String(++wn), nm = esc(en.name) + (x.warm ? ' warm-up' : ' set ' + lab);
+        return '<div class="ed-row' + (x.warm ? ' warm' : '') + '"><button type="button" class="set-type" data-act="ed-warm" data-ei="' + ei + '" data-si="' + si + '" aria-label="' + nm + ': switch warm-up or working">' + lab + '</button>' +
+          '<input type="text" inputmode="decimal" data-ed="w" data-ei="' + ei + '" data-si="' + si + '" value="' + (x.w == null ? '' : fmtW(x.w)) + '" placeholder="' + (x.bw ? 'BW' : U()) + '" aria-label="' + nm + (x.bw ? ' added load' : ' weight') + '">' +
+          '<input type="text" inputmode="numeric" data-ed="r" data-ei="' + ei + '" data-si="' + si + '" value="' + (x.r == null ? '' : x.r) + '" aria-label="' + nm + ' reps">' +
+          '<input type="text" inputmode="numeric" data-ed="rir" data-ei="' + ei + '" data-si="' + si + '" value="' + (x.rir == null ? '' : x.rir) + '" aria-label="' + nm + ' RIR">' +
+          '<button type="button" class="del" data-act="ed-del" data-ei="' + ei + '" data-si="' + si + '" aria-label="Delete ' + nm + '">×</button></div>';
+      }).join('') +
+      '<button type="button" class="btn small" data-act="ed-add" data-ei="' + ei + '">+ Set</button>' +
+      '<label class="field" style="margin:8px 0 0"><span>Note</span><input type="text" class="note-input" data-ed="note" data-ei="' + ei + '" maxlength="200" value="' + esc(en.note || '') + '"></label></div>';
+  });
+  h += '<label class="field"><span>Session notes</span><textarea class="note-input" data-ed="snote">' + esc(s.notes || '') + '</textarea></label>' +
+    '<div class="ed-bar"><button type="button" class="btn primary" data-act="ed-save">Save changes</button><button type="button" class="btn" data-act="ed-cancel">Cancel</button></div>';
+  return h;
+}
 function renderProgress() {
+  if (ui.editDraft) return renderSessionEdit();
   var comp = completedSessions();
   var h = '<h2>Progress</h2>';
-  if (!comp.length) {
-    return h + '<div class="empty"><h3>Nothing to chart yet</h3><p class="muted">Finish your first session on the Today tab. Charts, PRs and weekly volume show up here after that.</p>' +
+  if (!comp.length) return h + renderBodyCard() + '<div class="empty"><h3>No workouts yet</h3><p class="muted">Finish your first session on the Today tab. Charts, PRs and weekly volume show up here after that.</p>' +
       '<button type="button" class="btn primary" data-act="goto-today">Go to Today</button></div>';
-  }
   var a = adherence();
   h += '<div class="stats"><div class="stat"><b>' + a.streak + '</b><span>sessions in a row</span></div><div class="stat"><b>' + a.month + '</b><span>this month</span></div><div class="stat"><b>' + comp.length + '</b><span>all time</span></div></div>';
+  var hBody = renderBodyCard(), bwWeeks = ui.chart && ui.chart.bw;
 
   var allEx = [];
   program.days.forEach(function (d) { d.exercises.forEach(function (e) { allEx.push(e); }); });
@@ -1530,7 +1707,7 @@ function renderProgress() {
   h2 += '</select></label>';
   var series = ui.progressEx ? exSeries(ui.progressEx) : [];
   var found = ui.progressEx ? findEx(ui.progressEx) : null;
-  ui.chart = { series: series };
+  ui.chart = { series: series, bw: bwWeeks };
   if (!series.length) {
     h2 += '<p class="muted">No logged working sets for this exercise yet.</p>';
   } else {
@@ -1616,14 +1793,15 @@ function renderProgress() {
       s.entries.filter(function (en) { return en.sets.length; }).map(function (en) {
         return '<li>' + esc(en.name) + ': ' + en.sets.map(function (x) {
           return (x.warm ? 'W ' : '') + fmtSetW(x) + '×' + (x.r == null ? '–' : x.r) + (x.rir != null ? ' @' + x.rir : '');
-        }).join(', ') + (en.note ? ' <em>(' + esc(en.note) + ')</em>' : '') + '</li>';
+        }).join(', ') + (en.note ? ' <span class="note-hl">' + esc(en.note) + '</span>' : '') + '</li>';
       }).join('') + '</ul>' +
       (pics.length ? '<div class="hist-photos">' + pics.map(function (en) { return '<img class="thumb" data-photo-lazy="' + esc(photoId(s.id, en.exId)) + '" alt="' + esc(en.name) + '">'; }).join('') + '</div>' : '') +
-      (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') +
-      '<button type="button" class="btn small danger" data-act="del-session" data-id="' + esc(s.id) + '">Delete this session</button></details>';
+      (s.notes ? '<p class="small note-hl">' + esc(s.notes) + '</p>' : '') +
+      '<div class="chips"><button type="button" class="btn small" data-act="edit-session" data-id="' + esc(s.id) + '">Edit</button>' +
+      '<button type="button" class="btn small danger" data-act="del-session" data-id="' + esc(s.id) + '">Delete this session</button></div></details>';
   });
   h4 += '</section>';
-  return h + h2 + hMap + h3 + hKcal + h4;
+  return h + hBody + h2 + hMap + h3 + hKcal + h4;
 }
 
 /* ---------- Muscle map (inline SVG) ----------
@@ -1725,7 +1903,7 @@ function renderSettings() {
   var nSess = sessions.filter(function (s) { return s.completedAt; }).length;
   var lb = U() === 'lb';
   return '<h2>Settings</h2>' +
-    travelNote + '<section class="card" aria-labelledby="st-block"><h3 id="st-block">Program block</h3><p class="muted small">Today counts as week ' + w + ' (' + WEEK_NAMES[w] + '). After the deload in week 5, set a new start date to begin the next block.</p>' +
+    travelNote + '<section class="card" aria-labelledby="st-block"><h3 id="st-block">Program block</h3><p class="muted small">Today counts as week ' + w + ' (' + WEEK_NAMES[w] + '). From week 5 the app asks each week whether to deload or keep progressing (on the Today tab). Choosing a week here by hand turns those questions off.</p>' +
     '<label class="field"><span>Start date of week 1</span><input type="date" data-setting="programStart" value="' + esc(settings.programStart) + '"></label>' +
     '<label class="field"><span>Current week</span><select data-setting="week">' + weekOpts + '</select></label></section>' +
     '<section class="card" aria-labelledby="st-units"><h3 id="st-units">Units and progression</h3>' +
@@ -1735,13 +1913,14 @@ function renderSettings() {
     '<label class="field"><span>Lower days (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="' + (lb ? 'incLowerLb' : 'incLower') + '" value="' + (lb ? settings.incLowerLb : settings.incLower) + '"></label></div></section>' +
     '<section class="card" aria-labelledby="st-kcal"><h3 id="st-kcal">Body</h3>' +
     '<label class="field"><span>Body weight (' + U() + ')</span><input type="text" inputmode="decimal" data-setting="bodyWeight" value="' + fmtW(Number(settings.bodyWeight) || null) + '"></label>' +
-    '<p class="muted small" style="margin:0">Your bodyweight (BW). It is shown on bodyweight exercises and used to estimate calories burned. BW sets are logged as BW, not as kilos, so changing this never alters your history. Update it as your weight changes.</p></section>' +
+    '<label class="field"><span>Goal weight (' + U() + ', optional)</span><input type="text" inputmode="decimal" data-setting="goalWeight" value="' + (settings.goalWeight ? fmtW(Number(settings.goalWeight)) : '') + '" placeholder="e.g. ' + (U() === 'lb' ? '132' : '60') + '"></label>' +
+    '<p class="muted small" style="margin:0">Your bodyweight (BW) updates itself from your morning weigh-ins (7-day average). It is shown on bodyweight exercises and used for calories. BW sets are logged as BW, so changing it never alters your history.</p></section>' +
     '<section class="card" aria-labelledby="st-rest"><h3 id="st-rest">Rest timer</h3>' +
     '<label class="field"><span>Default rest</span><select data-setting="restDefault">' + restOpts.map(function (s) { return '<option value="' + s + '"' + (s === Number(settings.restDefault) ? ' selected' : '') + '>' + fmtRest(s) + '</option>'; }).join('') + '</select></label>' +
     '<label class="check-field"><input type="checkbox" data-setting="useProgramRest"' + (settings.useProgramRest ? ' checked' : '') + '> Use each exercise\'s rest from the program</label>' +
     '<label class="check-field"><input type="checkbox" data-setting="sound"' + (settings.sound ? ' checked' : '') + '> Beep and vibrate when rest is over</label>' +
     '<p class="muted small" style="margin:0">Phones pause sound while the screen is locked. The countdown keeps running, and the beep plays as soon as you unlock if rest ended meanwhile.</p></section>' +
-    '<section class="card" aria-labelledby="st-data"><h3 id="st-data">Your data</h3><p class="muted small">' + nSess + ' finished session' + (nSess === 1 ? '' : 's') + ' and ' + templates.length + ' template' + (templates.length === 1 ? '' : 's') + ' stored in this browser. Photos are stored separately and are not included in the export.</p>' +
+    '<section class="card" aria-labelledby="st-data"><h3 id="st-data">Your data</h3><p class="muted small">' + nSess + ' finished session' + (nSess === 1 ? '' : 's') + ' and ' + templates.length + ' template' + (templates.length === 1 ? '' : 's') + ' stored in this browser. Last backup: ' + (settings.lastBackupAt ? fmtDate(isoDate(new Date(settings.lastBackupAt))) : 'never') + '. Photos are not included in the export.</p>' +
     '<div class="stack"><button type="button" class="btn block" data-act="export">Export backup (JSON)</button>' +
     '<button type="button" class="btn block" data-act="import">Import backup (JSON)</button>' +
     '<button type="button" class="btn danger block" data-act="reset-program">Reset program to original</button>' +
@@ -1763,6 +1942,7 @@ function prepCanvas(c, h) {
 }
 function drawCharts() {
   if (!ui.chart) return;
+  var bwc = $('#bw-chart'); if (bwc && ui.chart.bw && ui.chart.bw.length > 1) drawBw(bwc, ui.chart.bw);
   var lc = $('#line-chart'); if (lc && ui.chart.series && ui.chart.series.length) drawLine(lc, ui.chart.series);
   var bc = $('#bar-chart'); if (bc && ui.chart.bars) drawBars(bc, ui.chart.bars);
 }
@@ -1774,6 +1954,25 @@ function drawSeries(ctx, xy, color, dashed) {
   ctx.setLineDash([]); ctx.fillStyle = color;
   xy.forEach(function (p) { ctx.beginPath(); ctx.arc(p[0], p[1], dashed ? 2.5 : 4, 0, Math.PI * 2); ctx.fill(); });
   ctx.restore();
+}
+function drawBw(canvas, weeks) {
+  var r = prepCanvas(canvas, 200), ctx = r.ctx, w = r.w, h = r.h; if (!ctx) return;
+  var c = colors(), pad = { l: 46, r: 14, t: 12, b: 30 }, goal = Number(settings.goalWeight) || null;
+  var pts = weeks.map(function (x) { return { t: x.t, date: x.week, v: toD(x.avg) }; });
+  var vals = pts.map(function (p) { return p.v; }); if (goal) vals.push(toD(goal));
+  var lo = minOf(vals), hi = maxOf(vals); if (hi - lo < 2) { var m = (hi + lo) / 2; lo = m - 1; hi = m + 1; }
+  var sp = hi - lo; lo -= sp * 0.1; hi += sp * 0.1;
+  var t0 = pts[0].t, t1 = pts[pts.length - 1].t, iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  function X(t) { return t1 === t0 ? pad.l + iw / 2 : pad.l + (t - t0) / (t1 - t0) * iw; }
+  function Y(v) { return pad.t + (1 - (v - lo) / (hi - lo)) * ih; }
+  ctx.clearRect(0, 0, w, h); ctx.font = '13px ' + c.font; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  for (var i = 0; i <= 3; i++) { var v = lo + (hi - lo) * i / 3, y = Y(v);
+    ctx.strokeStyle = c.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = c.muted; ctx.fillText(fmtNum(v, 1), pad.l - 6, y); }
+  if (goal) drawSeries(ctx, [[pad.l, Y(toD(goal))], [w - pad.r, Y(toD(goal))]], c.muted, true);
+  drawSeries(ctx, pts.map(function (p) { return [X(p.t), Y(p.v)]; }), c.yellow, false);
+  ctx.fillStyle = c.muted; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText(fmtDate(pts[0].date), pad.l, h - pad.b + 10);
+  ctx.textAlign = 'right'; ctx.fillText(fmtDate(pts[pts.length - 1].date), w - pad.r, h - pad.b + 10);
 }
 function drawLine(canvas, ptsKg) {
   var r = prepCanvas(canvas, 230), ctx = r.ctx, w = r.w, h = r.h; if (!ctx) return;
@@ -1891,7 +2090,7 @@ function toast(msg, kind) {
 /* ================= Global controls ================= */
 document.querySelector('.tabbar').addEventListener('click', function (e) {
   var b = e.target.closest('[data-tab]'); if (!b) return;
-  flush(); ui.tab = b.dataset.tab; if (ui.tab !== 'today') ui.justCompleted = null;
+  flush(); ui.tab = b.dataset.tab; ui.editDraft = null; if (ui.tab !== 'today') ui.justCompleted = null;
   render(); window.scrollTo(0, 0);
 });
 $('#unit-btn').addEventListener('click', function () { setUnit(U() === 'kg' ? 'lb' : 'kg'); });
@@ -1918,7 +2117,17 @@ view.addEventListener('click', function (e) {
       if (t) startSession(dayFromTemplate(t));
       break;
     }
-    case 'start-deload': settings.weekMode = 'manual'; settings.manualWeek = 5; saveSettings(); render(); toast('Deload week on. Set Current week back to automatic in Settings afterwards.'); break;
+    case 'start-deload':
+      if (settings.weekMode !== 'manual' && blockIndex() >= 4) { setDeloadChoice(blockIndex(), 'deload'); render(); toast('Deload week on'); break; }
+      settings.weekMode = 'manual'; settings.manualWeek = 5; saveSettings(); render(); toast('Deload week on. Set Current week back to automatic in Settings afterwards.'); break;
+    case 'deload-yes': if (s) { toast('Finish or discard the open workout first'); return; } setDeloadChoice(blockIndex(), 'deload'); render(); toast('Deload week on: lighter loads, half the sets'); break;
+    case 'deload-no': setDeloadChoice(blockIndex(), 'continue'); render(); toast('Keep progressing: week 4 targets. Asking again next week.'); break;
+    case 'deload-change': if (s) { toast('Finish or discard the open workout first'); return; } setDeloadChoice(blockIndex(), null); render(); break;
+    case 'deload-newblock':
+      if (s) { toast('Finish or discard the open workout first'); return; }
+      settings.programStart = isoDate(); settings.weekMode = 'auto'; settings.deloadChoices = {}; saveSettings();
+      ui.selectedDay = null; render(); toast('New block started: week 1 from today');
+      break;
     case 'goto-today': ui.tab = 'today'; render(); break;
     case 'rest-preset': startTimer(Number(b.dataset.s)); break;
     case 'plate-unit': ui.plateUnit = b.dataset.u; render(); focusSel('[data-act="plate-unit"][data-u="' + b.dataset.u + '"]'); break;
@@ -1976,6 +2185,53 @@ view.addEventListener('click', function (e) {
       en.bwMode = b.dataset.v === '1';
       en.sets.forEach(function (x) { x.bw = en.bwMode; });
       saveSessionsSoon(); refreshEntry(ei); focusSel('.ex[data-ei="' + ei + '"] [data-act="bw-mode"][data-v="' + b.dataset.v + '"]');
+      break;
+    }
+    case 'copy-note': {
+      if (!en) return;
+      var lnx = lastNote(en.exId, s.id); if (!lnx) return;
+      en.note = lnx.note; saveSessions(); refreshEntry(ei);
+      var ni = view.querySelector('.ex[data-ei="' + ei + '"] [data-f="exnote"]'); if (ni) ni.focus({ preventScroll: true });
+      toast('Note copied to today');
+      break;
+    }
+    case 'weigh-save': {
+      var wv = num(($('#weigh-val') || {}).value);
+      if (wv == null || wv <= 0) { toast('Enter your weight'); return; }
+      var wkg = fromD(wv);
+      if (wkg < 25 || wkg > 300) { toast('That weight looks wrong'); return; }
+      var prevA = avg7();
+      weighIn(isoDate(), wkg); ui.reweigh = false; render();
+      toast('Saved. 7-day average ' + fmtBw(avg7()) + (prevA ? ' (' + fmtBw(avg7() - prevA, true) + ')' : ''));
+      break;
+    }
+    case 'reweigh': ui.reweigh = true; render(); focusSel('#weigh-val'); break;
+    case 'weigh-del':
+      if (!confirm('Delete the weigh-in of ' + fmtDate(b.dataset.date) + '?')) return;
+      bodylog = bodylog.filter(function (x) { return x.date !== b.dataset.date; }); saveBodylog(); syncBodyWeight(); render(); toast('Weigh-in deleted');
+      break;
+    case 'backup-later': settings.backupSnoozeUntil = Date.now() + 3 * 864e5; saveSettings(); render(); toast('OK, reminder in 3 days'); break;
+    case 'replace-ex': openExDialog(b.dataset.day, b.dataset.ex, 'replace'); break;
+    case 'edit-session': {
+      var src = sessions.find(function (x) { return x.id === b.dataset.id; }); if (!src) return;
+      ui.editDraft = clone(src); render(); window.scrollTo(0, 0);
+      break;
+    }
+    case 'ed-warm': { var es = ui.editDraft.entries[+b.dataset.ei].sets[+b.dataset.si]; es.warm = !es.warm; render(); break; }
+    case 'ed-del': ui.editDraft.entries[+b.dataset.ei].sets.splice(+b.dataset.si, 1); render(); break;
+    case 'ed-add': {
+      var een = ui.editDraft.entries[+b.dataset.ei], wk2 = een.sets.filter(function (x) { return !x.warm; });
+      een.sets.push({ w: wk2.length ? wk2[wk2.length - 1].w : null, r: null, rir: null, warm: false, done: true, bw: !!een.bwMode });
+      render(); break;
+    }
+    case 'ed-cancel': ui.editDraft = null; render(); toast('No changes saved'); break;
+    case 'ed-save': {
+      var dr = ui.editDraft;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dr.date || '')) { toast('Pick a valid date'); return; }
+      dr.entries.forEach(function (x) { x.sets = x.sets.filter(function (y) { return y.r != null; }); }); // a row without reps is not a set
+      var ix = sessions.findIndex(function (x) { return x.id === dr.id; });
+      if (ix < 0) { ui.editDraft = null; render(); return; }
+      sessions[ix] = dr; saveSessions(); ui.editDraft = null; ui.volWeek = null; render(); toast('Session updated');
       break;
     }
     case 'del-set':
@@ -2103,7 +2359,7 @@ view.addEventListener('click', function (e) {
       break;
 
     /* Settings */
-    case 'export': exportData(); break;
+    case 'export': exportData(); render(); break;
     case 'import': $('#import-file').click(); break;
     case 'reset-program':
       if (!confirm('Reset the program to the original 4-day plan? Your custom edits will be lost. Logged sessions and templates stay.')) return;
@@ -2116,6 +2372,7 @@ view.addEventListener('click', function (e) {
   }
 });
 view.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && e.target.id === 'weigh-val') { e.preventDefault(); var sb = view.querySelector('[data-act="weigh-save"]'); if (sb) sb.click(); return; }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('img[data-act="photo-zoom"]')) { e.preventDefault(); e.target.click(); }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('.mm-muscle')) {
     e.preventDefault();
@@ -2136,6 +2393,19 @@ function focusSel(sel) { var f = view.querySelector(sel); if (f && !f.disabled) 
 /* ================= Events: view input ================= */
 view.addEventListener('input', function (e) {
   var t = e.target;
+  if (t.dataset.ed && ui.editDraft) {
+    var dr = ui.editDraft, f0 = t.dataset.ed;
+    if (f0 === 'date') { dr.date = t.value; return; }
+    if (f0 === 'snote') { dr.notes = t.value; return; }
+    var ee = dr.entries[+t.dataset.ei];
+    if (f0 === 'note') { ee.note = t.value; return; }
+    var xs = ee.sets[+t.dataset.si], vv = num(t.value);
+    if (f0 === 'w') vv = fromD(vv);
+    if ((f0 === 'r' || f0 === 'rir') && vv != null) vv = Math.round(vv);
+    if (f0 === 'rir' && vv != null) vv = Math.min(vv, 10);
+    xs[f0] = vv;
+    return;
+  }
   var tool = t.dataset.tool;
   if (tool) {
     if (tool === 'plate-w') {
@@ -2153,11 +2423,11 @@ view.addEventListener('input', function (e) {
   }
   var f = t.dataset.f; if (!f) return;
   var s = activeSession();
-  if (f === 'snote') { if (s) { s.notes = t.value; saveSessionsSoon(); } return; }
+  if (f === 'snote') { if (s) { s.notes = t.value; flush(); saveSessions(); } return; } // notes are saved on every keystroke
   if (!s) return;
   var art = t.closest('.ex'); if (!art) return;
   var en = s.entries[Number(art.dataset.ei)];
-  if (f === 'exnote') { en.note = t.value; saveSessionsSoon(); return; }
+  if (f === 'exnote') { en.note = t.value; flush(); saveSessions(); return; }
   var row = t.closest('.set-row'); if (!row) return;
   var st = en.sets[Number(row.dataset.si)];
   var v2 = num(t.value);
@@ -2179,12 +2449,14 @@ view.addEventListener('change', function (e) {
     if (t.value === 'auto') settings.weekMode = 'auto'; else { settings.weekMode = 'manual'; settings.manualWeek = Number(t.value); }
   } else if (t.type === 'checkbox') {
     settings[k] = t.checked;
+  } else if (k === 'goalWeight' && t.value.trim() === '') {
+    settings.goalWeight = null;
   } else if (k === 'programStart') {
     if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) settings.programStart = t.value;
   } else {
     var v = num(t.value);
     if (v == null || v <= 0) { toast('Enter a number above zero'); render(); return; }
-    settings[k] = k === 'restDefault' ? Math.round(clamp(v, 10, 900)) : k === 'bodyWeight' ? Math.round(fromD(clamp(v, 1, 500)) * 100) / 100 : v;
+    settings[k] = k === 'restDefault' ? Math.round(clamp(v, 10, 900)) : (k === 'bodyWeight' || k === 'goalWeight') ? Math.round(fromD(clamp(v, 1, 500)) * 100) / 100 : v;
   }
   saveSettings(); render(); toast('Settings saved');
   focusSel('[data-setting="' + k + '"]');
@@ -2215,15 +2487,17 @@ function DF(n) { return dayForm.elements.namedItem(n); }
 function showDlg(d) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
 function closeDlg(d) { if (typeof d.close === 'function') d.close(); else d.removeAttribute('open'); }
 
-function openExDialog(dayId, exId) {
+function openExDialog(dayId, exId, mode) {
   var day = findDay(dayId); if (!day) return;
   var e = exId ? day.exercises.find(function (x) { return x.id === exId; }) : null;
-  editing = { dayId: dayId, exId: exId };
+  editing = { dayId: dayId, exId: exId, mode: mode === 'replace' && e ? 'replace' : null, oldName: e ? e.name : '' };
+  exForm.classList.toggle('replace', editing.mode === 'replace');
+  EF('keepHistory').checked = false;
   var base = e || normalizeEx({ id: 'tmp', name: '', type: 'A', muscle: 'Chest' });
   var muscles = MUSCLES.slice(); if (muscles.indexOf(base.muscle) < 0) muscles.push(base.muscle);
   EF('muscle').innerHTML = muscles.map(function (m) { return '<option' + (m === base.muscle ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
-  $('#ex-dlg-title').textContent = e ? 'Edit exercise' : 'Add exercise to ' + day.name;
-  EF('name').value = e ? base.name : '';
+  $('#ex-dlg-title').textContent = editing.mode ? 'Replace ' + e.name : e ? 'Edit exercise' : 'Add exercise to ' + day.name;
+  EF('name').value = e && !editing.mode ? base.name : '';
   EF('type').value = base.type;
   EF('pattern').value = base.pattern;
   EF('sets').value = base.sets; EF('setsW34').value = base.setsW34;
@@ -2234,9 +2508,9 @@ function openExDialog(dayId, exId) {
   EF('superset').value = base.superset || '';
   EF('technique').value = base.technique || '';
   EF('perSide').checked = !!base.perSide; EF('bodyweight').checked = !!base.bodyweight; EF('timed').checked = !!base.timed; EF('band').checked = !!base.band;
-  EF('notes').value = base.notes || '';
+  EF('notes').value = editing.mode ? '' : (base.notes || '');
   $('#ex-error').textContent = '';
-  $('#ex-delete').hidden = !e;
+  $('#ex-delete').hidden = !e || !!editing.mode;
   showDlg(exDlg); EF('name').focus();
 }
 exForm.addEventListener('submit', function (ev) {
@@ -2255,9 +2529,16 @@ exForm.addEventListener('submit', function (ev) {
   var data = { name: name, type: EF('type').value, muscle: EF('muscle').value, pattern: EF('pattern').value, sets: sets, setsW34: setsW34 == null ? sets : setsW34,
     repMin: repMin, repMax: repMax, rirWeeks: rir, rest: rest, increment: inc, superset: EF('superset').value.trim(),
     technique: EF('technique').value.trim(), perSide: EF('perSide').checked, bodyweight: EF('bodyweight').checked, timed: EF('timed').checked, band: EF('band').checked, notes: EF('notes').value.trim() };
-  if (editing.exId) Object.assign(day.exercises.find(function (x) { return x.id === editing.exId; }), data);
-  else day.exercises.push(normalizeEx(Object.assign({ id: uid() }, data)));
-  saveProgram(); closeDlg(exDlg); render(); toast(editing.exId ? 'Exercise saved' : 'Exercise added');
+  var msg = editing.exId ? 'Exercise saved' : 'Exercise added';
+  if (editing.mode === 'replace' && !EF('keepHistory').checked) {
+    var at = day.exercises.findIndex(function (x) { return x.id === editing.exId; });
+    day.exercises[at] = normalizeEx(Object.assign({ id: uid() }, data));
+    msg = editing.oldName + ' replaced by ' + name + '. Its old sessions stay in your history.';
+  } else if (editing.exId) {
+    Object.assign(day.exercises.find(function (x) { return x.id === editing.exId; }), data);
+    if (editing.mode) msg = editing.oldName + ' renamed to ' + name + ', history kept.';
+  } else day.exercises.push(normalizeEx(Object.assign({ id: uid() }, data)));
+  saveProgram(); closeDlg(exDlg); render(); toast(msg);
 });
 exForm.addEventListener('click', function (ev) {
   var b = ev.target.closest('[data-dlg]'); if (!b) return;
@@ -2287,7 +2568,8 @@ dayForm.addEventListener('click', function (ev) { if (ev.target.closest('[data-d
 /* ================= Export / import ================= */
 function exportData() {
   flush();
-  var data = { app: 'ut_tracker', version: 1, schema: SCHEMA, exportedAt: new Date().toISOString(), program: program, sessions: sessions, settings: settings, templates: templates };
+  settings.lastBackupAt = Date.now(); settings.backupSnoozeUntil = 0; saveSettings();
+  var data = { app: 'ut_tracker', version: 1, schema: SCHEMA, exportedAt: new Date().toISOString(), program: program, sessions: sessions, settings: settings, templates: templates, bodylog: bodylog };
   try {
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -2309,6 +2591,7 @@ $('#import-file').addEventListener('change', function (ev) {
     sessions = data.sessions.map(normalizeSession).filter(Boolean);
     settings = Object.assign(defaultSettings(), data.settings || {});
     templates = Array.isArray(data.templates) ? data.templates : [];
+    if (Array.isArray(data.bodylog)) { bodylog = data.bodylog.filter(function (x) { return x && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && Number(x.kg) > 0; }); saveBodylog(); }
     migrate(true, Number(data.schema) || 1); // brings older backups up to the current schema
     ui.justCompleted = null; ui.volWeek = null; ui.progressEx = null; ui.selectedDay = null;
     render(); toast('Backup imported');
